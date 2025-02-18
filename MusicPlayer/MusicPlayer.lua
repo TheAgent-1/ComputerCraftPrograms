@@ -14,7 +14,7 @@ end
 
 local function download_song(url)
     print("Requesting song...")
-    local request_url = "http://your-server-ip:5000/download?url=" .. textutils.urlEncode(url)
+    local request_url = "http://192.168.1.41:58239/download?url=" .. textutils.urlEncode(url)
     local response = http.get(request_url)
     
     if not response then
