@@ -76,14 +76,19 @@ local function startGame()
         print("Joining game with ID: " .. gameID)
 
         -- Wait for the server response (confirmation or error)
-        local senderID, message = rednet.receive("ttt")
-        if message.type == "error" then
-            print("Error: " .. message.message)
-            return
+        local senderID, message = rednet.receive("ttt", 10)  -- Timeout after 10 seconds
+        if senderID then
+            if message.type == "error" then
+                print("Error: " .. message.message)
+                return
+            elseif message.type == "game_joined" then
+                print("Successfully joined game ID: " .. message.game_id)
+                -- Proceed with the game loop
+                gameLoop(message.game_id)
+            end
+        else
+            print("No response from server. The game may not exist or is unavailable.")
         end
-
-        -- Start the game loop once joined
-        gameLoop(gameID)
     else
         print("Invalid option! Please type 'start' or 'join'.")
     end
