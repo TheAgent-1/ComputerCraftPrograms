@@ -1,133 +1,92 @@
--- TTT Client
--- A Tic-Tac-Toe client for connecting to the TTT server
-
--- Auto-open wireless modem
+-- Ensure we have a wireless modem available and open the Rednet communication
 local modem = peripheral.find("modem", function(_, modem) return modem.isWireless() end)
 if modem then
     rednet.open(peripheral.getName(modem))
+    print("Wireless modem connected and Rednet communication opened.")
 else
-    print("No wireless modem found! Please attach a wireless modem.")
+    print("No wireless modem found. Exiting client.")
     return
 end
 
-print("[TTT Client] Welcome to Tic-Tac-Toe!")
-
--- Function to print the game board with row/column labels
-local function printBoard(board)
-    print("      1    2    3")
-    for row = 1, 3 do
-        local line = row .. "   "
-        for col = 1, 3 do
-            line = line .. board[row][col] .. "  |"
-        end
-        print(line:sub(1, -2)) -- Remove last extra " |"
-        
-        if row < 3 then
-            print("  -----------------")
-        end
-    end
-end
-
--- Function to handle user input for their move
 local function getMove()
-    local valid = false
-    local move = {}
-    
-    while not valid do
-        print("Enter your move (row, column): ")
-        local input = read()
-        local row, col = input:match("^(%d),(%d)$")
-        
-        row, col = tonumber(row), tonumber(col)
-        
-        if row and col and row >= 1 and row <= 3 and col >= 1 and col <= 3 then
-            move = { row = row, col = col }
-            valid = true
-        else
-            print("Invalid move. Please enter a valid row and column (1-3).")
-        end
-    end
-    
-    return move
+    -- Get user input for their move (row and column)
+    print("Enter your move (row col): ")
+    local move = read()
+    local row, col = move:match("^(%d+)%s*(%d+)$")
+    return tonumber(row), tonumber(col)
 end
 
--- Function to handle receiving updates from the server
-local function handleGameUpdate(message)
-    if message.status == "waiting" then
-        print("Waiting for another player to join...")
-    elseif message.status == "playing" then
-        printBoard(message.board)
-        
-        if message.turn == 1 then
-            print("Your turn! (You are 'X')")
-        else
-            print("Waiting for opponent's move...")
-        end
-    elseif message.status == "win" then
-        printBoard(message.board)
-        print("You win!")
-    elseif message.status == "draw" then
-        printBoard(message.board)
-        print("It's a draw!")
-    end
-end
-
--- Main loop for the client
 local function startGame()
-    -- Ask the user to either start or join a game
+    -- Ask the user whether they want to start or join a game
     print("Would you like to start a new game (type 'start') or join an existing one (type 'join')?")
     local action = read()
 
     if action == "start" then
-        -- Start a new game
-        rednet.send(0, { type = "start_game" }, "ttt")
-        print("Starting a new game...")
+        -- Starting a new game
+        local gameID = math.random(1000, 9999)  -- Generate a unique game ID
+        rednet.send(0, { type = "start_game", game_id = gameID }, "ttt")
+        print("Started a new game! Game ID: " .. gameID)
 
+        -- Wait for the second player to join
         local senderID, message = rednet.receive("ttt")
-
         if message.type == "waiting_for_player" then
-            print("Waiting for opponent...")
+            print("Waiting for opponent to join...")
         end
 
-        -- Game loop
-        local gameID = message.game_id
-        while true do
-            local senderID, message = rednet.receive("ttt")
-            if message.game_id == gameID then
-                handleGameUpdate(message)
-                if message.status == "playing" and message.turn == 1 then
-                    local move = getMove()
-                    rednet.send(0, { type = "make_move", game_id = gameID, move = move }, "ttt")
-                end
-            end
-        end
-
+        -- Once both players are in the game, start the game loop
+        gameLoop(gameID)
+        
     elseif action == "join" then
-        print("Enter the game ID to join: ")
-        local gameID = read()
-        rednet.send(0, { type = "join_game", game_id = gameID }, "ttt")
+        -- Joining an existing game
+        print("Enter the Game ID to join: ")
+        local gameID = tonumber(read())
 
+        -- Send join request to the server
+        rednet.send(0, { type = "join_game", game_id = gameID }, "ttt")
+        print("Joining game with ID: " .. gameID)
+
+        -- Wait for the server response (confirmation or error)
         local senderID, message = rednet.receive("ttt")
         if message.type == "error" then
-            print(message.message)
+            print("Error: " .. message.message)
             return
         end
 
-        -- Game loop after joining
-        while true do
-            local senderID, message = rednet.receive("ttt")
-            if message.game_id == gameID then
-                handleGameUpdate(message)
-                if message.status == "playing" and message.turn == 2 then
-                    local move = getMove()
-                    rednet.send(0, { type = "make_move", game_id = gameID, move = move }, "ttt")
-                end
-            end
-        end
+        -- Start the game loop once joined
+        gameLoop(gameID)
     else
         print("Invalid option! Please type 'start' or 'join'.")
     end
 end
 
--- Start the game loop
+-- Game loop for both players
+local function gameLoop(gameID)
+    while true do
+        local senderID, message = rednet.receive("ttt")
+        if message.game_id == gameID then
+            if message.status == "playing" then
+                -- Display the board
+                printBoard(message.board)
+
+                -- If it's the player's turn, get their move
+                if message.turn == 1 then
+                    local row, col = getMove()
+                    rednet.send(0, { type = "make_move", game_id = gameID, move = {row, col} }, "ttt")
+                end
+            end
+        end
+    end
+end
+
+-- Function to display the Tic-Tac-Toe board
+local function printBoard(board)
+    for i = 1, 3 do
+        print(board[i][1] .. " | " .. board[i][2] .. " | " .. board[i][3])
+        if i < 3 then
+            print("--------")
+        end
+    end
+end
+
+-- Main function to start the client
 startGame()
