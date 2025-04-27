@@ -94,6 +94,9 @@ local function main() --Handles main screen
    
     elseif choice == "2" then
         MusicInstall()
+        
+    elseif choice == "3" then
+        TicTacToeInstall()
 
     else
         print("Invalid option. Exiting.")
