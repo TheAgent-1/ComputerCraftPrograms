@@ -5,6 +5,10 @@ local mailclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCra
 --Music Player--
 local musicplayer_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/MusicPlayer/MusicPlayer.lua"
 
+--TicTacToe--
+local tictactoeserver_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/TicTacToe/TicTacToe_server.lua"
+local tictactoeclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/TicTacToe/TicTacToe_client.lua"
+
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
     if response then
@@ -52,6 +56,24 @@ local function MusicInstall() --Handles installing the music player
     end
 end
 
+local function TicTacToeInstall() --Handles installing the TicTacToe game
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Please select the installation type:")
+    print("1 - Server")
+    print("2 - Client")
+    write("Select an option: ")
+
+    local choice = read()
+    if choice == "1" then
+        downloadFile(tictactoeserver_url, "TicTacToeServer.lua")
+    elseif choice == "2" then
+        downloadFile(tictactoeclient_url, "TicTacToeClient.lua")
+    else
+        print("Invalid option. Exiting.")
+    end
+end
+
 local function main() --Handles main screen
     term.clear()
     term.setCursorPos(1, 1)
@@ -59,6 +81,7 @@ local function main() --Handles main screen
     print("0 - Exit")
     print("1 - Install Mail System")
     print("2 - Install Music Player (Broken)")
+    print("3 - Install TicTacToe")
     write("Select an option: ")
 
     local choice = read()
