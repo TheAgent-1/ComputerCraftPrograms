@@ -1,4 +1,5 @@
--- Ensure we have a wireless modem available and open the Rednet communication
+-- Client Code (TicTacToe Client)
+
 local modem = peripheral.find("modem", function(_, modem) return modem.isWireless() end)
 if modem then
     rednet.open(peripheral.getName(modem))
@@ -8,7 +9,6 @@ else
     return
 end
 
--- Function to display the Tic-Tac-Toe board
 local function printBoard(board)
     for i = 1, 3 do
         print(board[i][1] .. " | " .. board[i][2] .. " | " .. board[i][3])
@@ -18,7 +18,6 @@ local function printBoard(board)
     end
 end
 
--- Function to get the player's move (row and column)
 local function getMove()
     print("Enter your move (row col): ")
     local move = read()
@@ -26,26 +25,28 @@ local function getMove()
     return tonumber(row), tonumber(col)
 end
 
--- Game loop for both players
 local function gameLoop(gameID)
     while true do
         local senderID, message = rednet.receive("ttt")
         if message.game_id == gameID then
-            if message.status == "playing" then
+            if message.type == "game_update" then
                 -- Display the board
                 printBoard(message.board)
+                print("It's Player " .. (message.turn % 2 == 1 and "X's" or "O's") .. " turn.")
 
                 -- If it's the player's turn, get their move
-                if message.turn == 1 then
+                if message.turn % 2 == 1 then
                     local row, col = getMove()
                     rednet.send(0, { type = "make_move", game_id = gameID, move = {row, col} }, "ttt")
                 end
+            elseif message.type == "game_over" then
+                print("Game over! Winner: " .. message.winner)
+                break
             end
         end
     end
 end
 
--- Function to start the game, either as a new game or joining an existing one
 local function startGame()
     -- Ask the user whether they want to start or join a game
     print("Would you like to start a new game (type 'start') or join an existing one (type 'join')?")
@@ -60,7 +61,7 @@ local function startGame()
         -- Wait for the second player to join
         local senderID, message = rednet.receive("ttt")
         if message.type == "waiting_for_player" then
-            print("Waiting for opponent to join...")
+            print("Waiting for second player...")
         end
 
         -- Once both players are in the game, start the game loop
@@ -73,7 +74,6 @@ local function startGame()
 
         -- Send join request to the server
         rednet.send(0, { type = "join_game", game_id = gameID }, "ttt")
-        print("Joining game with ID: " .. gameID)
 
         -- Wait for the server response (confirmation or error)
         local senderID, message = rednet.receive("ttt", 10)  -- Timeout after 10 seconds
