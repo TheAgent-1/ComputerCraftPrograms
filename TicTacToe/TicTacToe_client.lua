@@ -8,14 +8,44 @@ else
     return
 end
 
+-- Function to display the Tic-Tac-Toe board
+local function printBoard(board)
+    for i = 1, 3 do
+        print(board[i][1] .. " | " .. board[i][2] .. " | " .. board[i][3])
+        if i < 3 then
+            print("--------")
+        end
+    end
+end
+
+-- Function to get the player's move (row and column)
 local function getMove()
-    -- Get user input for their move (row and column)
     print("Enter your move (row col): ")
     local move = read()
     local row, col = move:match("^(%d+)%s*(%d+)$")
     return tonumber(row), tonumber(col)
 end
 
+-- Game loop for both players
+local function gameLoop(gameID)
+    while true do
+        local senderID, message = rednet.receive("ttt")
+        if message.game_id == gameID then
+            if message.status == "playing" then
+                -- Display the board
+                printBoard(message.board)
+
+                -- If it's the player's turn, get their move
+                if message.turn == 1 then
+                    local row, col = getMove()
+                    rednet.send(0, { type = "make_move", game_id = gameID, move = {row, col} }, "ttt")
+                end
+            end
+        end
+    end
+end
+
+-- Function to start the game, either as a new game or joining an existing one
 local function startGame()
     -- Ask the user whether they want to start or join a game
     print("Would you like to start a new game (type 'start') or join an existing one (type 'join')?")
@@ -56,35 +86,6 @@ local function startGame()
         gameLoop(gameID)
     else
         print("Invalid option! Please type 'start' or 'join'.")
-    end
-end
-
--- Game loop for both players
-local function gameLoop(gameID)
-    while true do
-        local senderID, message = rednet.receive("ttt")
-        if message.game_id == gameID then
-            if message.status == "playing" then
-                -- Display the board
-                printBoard(message.board)
-
-                -- If it's the player's turn, get their move
-                if message.turn == 1 then
-                    local row, col = getMove()
-                    rednet.send(0, { type = "make_move", game_id = gameID, move = {row, col} }, "ttt")
-                end
-            end
-        end
-    end
-end
-
--- Function to display the Tic-Tac-Toe board
-local function printBoard(board)
-    for i = 1, 3 do
-        print(board[i][1] .. " | " .. board[i][2] .. " | " .. board[i][3])
-        if i < 3 then
-            print("--------")
-        end
     end
 end
 
