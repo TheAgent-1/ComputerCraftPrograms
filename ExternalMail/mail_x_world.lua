@@ -156,6 +156,7 @@ function delete_mail(username, password)
     local response = http_post("/delete_mail", data)
     if response and response.status == "success" then
         print("Mail #" .. mail_id .. " deleted successfully!")
+        view_mail(username, password)  -- Refresh mail after deletion
     else
         print("Error: " .. (response and response.message or "Unknown error"))
     end

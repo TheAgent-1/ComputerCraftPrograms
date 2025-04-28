@@ -5,15 +5,6 @@
         }
     },
     "mail_storage": {
-        "a": [
-            {
-                "from": "a",
-                "message": "Hi A, this is a message from the testing world"
-            },
-            {
-                "from": "a",
-                "message": "Oh wow! this message is from a new world"
-            }
-        ]
+        "a": []
     }
 }
