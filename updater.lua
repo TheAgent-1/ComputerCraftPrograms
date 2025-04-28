@@ -126,6 +126,9 @@ local function main() --Handles main screen
     elseif choice == "3" then
         TicTacToeInstall()
 
+    elseif choice == "4" then
+        ExternalMailInstall()
+
     else
         print("Invalid option. Exiting.")
     end
