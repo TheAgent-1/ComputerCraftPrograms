@@ -94,5 +94,36 @@ def receive_mail():
     
     return jsonify({"status": "success", "mail": mail_storage[username]}), 200
 
+# Endpoint to delete a mail (requires authentication)
+@app.route("/delete_mail", methods=["POST"])
+def delete_mail():
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+    mail_id = data.get("mail_id")
+
+    # Authenticate user
+    if username not in users or users[username]["password"] != password:
+        return jsonify({"status": "error", "message": "Invalid username or password!"}), 401
+
+    # Check if user has mail
+    if username not in mail_storage:
+        return jsonify({"status": "error", "message": "No mail found for this user!"}), 404
+
+    user_mail = mail_storage[username]
+
+    # Check if mail_id is valid (remember mail_id is 1-based from client)
+    if not isinstance(mail_id, int) or mail_id < 1 or mail_id > len(user_mail):
+        return jsonify({"status": "error", "message": "Invalid mail ID!"}), 400
+
+    # Delete the mail (adjusting for 0-based index)
+    user_mail.pop(mail_id - 1)
+
+    # Save updated data
+    save_data({"users": users, "mail_storage": mail_storage})
+
+    return jsonify({"status": "success", "message": "Mail deleted successfully!"}), 200
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

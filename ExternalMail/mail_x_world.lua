@@ -135,6 +135,33 @@ function view_mail(username, password)
     end
 end
 
+-- Function to delete mail
+function delete_mail(username, password)
+    term.clear()
+    term.setCursorPos(1,1)
+    print("Enter the ID of the mail you want to delete:")
+    local mail_id = tonumber(read())
+
+    if not mail_id then
+        print("Invalid mail ID.")
+        return
+    end
+
+    local data = {
+        username = username,
+        password = password,
+        mail_id = mail_id
+    }
+
+    local response = http_post("/delete_mail", data)
+    if response and response.status == "success" then
+        print("Mail #" .. mail_id .. " deleted successfully!")
+    else
+        print("Error: " .. (response and response.message or "Unknown error"))
+    end
+end
+
+
 -- Main program
 term.clear()
 term.setCursorPos(1,1)
@@ -175,3 +202,4 @@ while true do
         print("Invalid choice.")
     end
 end
+
