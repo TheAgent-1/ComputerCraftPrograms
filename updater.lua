@@ -1,3 +1,12 @@
+-- This program is a simple updater for various ComputerCraft programs.
+-- It allows the user to download and install different programs from a GitHub repository.
+-- The programs include a mail system, a music player, and a TicTacToe game.
+-- The updater provides a menu for the user to select which program to install.
+-- It uses HTTP requests to download the files and saves them locally.
+-- The program is designed to be run in the ComputerCraft mod for Minecraft.
+-- The program is written in Lua and uses the ComputerCraft API for file handling and terminal input/output.
+-- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
+
 --Mail System--
 local mailserver_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Mail/mail_server.lua"
 local mailclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Mail/mail_client.lua"
@@ -81,7 +90,7 @@ local function main() --Handles main screen
     print("0 - Exit")
     print("1 - Install Mail System")
     print("2 - Install Music Player (Broken)")
-    print("3 - Install TicTacToe")
+    print("3 - Install TicTacToe (Broken)")
     write("Select an option: ")
 
     local choice = read()
@@ -94,7 +103,7 @@ local function main() --Handles main screen
    
     elseif choice == "2" then
         MusicInstall()
-        
+
     elseif choice == "3" then
         TicTacToeInstall()
 
