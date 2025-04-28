@@ -1,13 +1,20 @@
 -- Constants
-local SERVER_URL = "http://localhost:5000"  -- URL of the Python mail server (adjust as needed)
+local SERVER_URL = "http://localhost:5000"  -- Replace with your server's URL
 
--- Function to handle HTTP requests
-function http_request(endpoint, method, data)
-    local response = http.post(SERVER_URL..endpoint, textutils.serializeJSON(data))
+-- Function to handle HTTP POST requests
+function http_post(endpoint, data)
+    local jsonData = textutils.serializeJSON(data)
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+    local response, err = http.post(SERVER_URL .. endpoint, jsonData, headers)
     if response then
-        return textutils.unserializeJSON(response.readAll())
+        local responseBody = response.readAll()
+        response.close()
+        local responseData = textutils.unserializeJSON(responseBody)
+        return responseData
     else
-        print("Error: Unable to contact server.")
+        print("HTTP POST request failed: " .. (err or "Unknown error"))
         return nil
     end
 end
@@ -26,11 +33,11 @@ function register_user()
         password = password
     }
     
-    local response = http_request("/register", "POST", data)
+    local response = http_post("/register", data)
     if response and response.status == "success" then
         print("Registration successful!")
     else
-        print("Error: " .. (response.message or "Unknown error"))
+        print("Error: " .. (response and response.message or "Unknown error"))
     end
 end
 
@@ -48,18 +55,18 @@ function login_user()
         password = password
     }
     
-    local response = http_request("/login", "POST", data)
+    local response = http_post("/login", data)
     if response and response.status == "success" then
         print("Login successful!")
-        return username  -- Return the logged-in username
+        return username, password  -- Return the logged-in username and password
     else
-        print("Error: " .. (response.message or "Unknown error"))
-        return nil
+        print("Error: " .. (response and response.message or "Unknown error"))
+        return nil, nil
     end
 end
 
 -- Function to send mail
-function send_mail(username)
+function send_mail(username, password)
     term.clear()
     term.setCursorPos(1,1)
     print("Enter recipient username: ")
@@ -69,21 +76,21 @@ function send_mail(username)
     
     local data = {
         username = username,
-        password = password,  -- Remember: For simplicity, assuming password is stored locally
+        password = password,
         recipient = recipient,
         message = message
     }
     
-    local response = http_request("/send_mail", "POST", data)
+    local response = http_post("/send_mail", data)
     if response and response.status == "success" then
         print("Mail sent to " .. recipient)
     else
-        print("Error: " .. (response.message or "Unknown error"))
+        print("Error: " .. (response and response.message or "Unknown error"))
     end
 end
 
 -- Function to view mail
-function view_mail(username)
+function view_mail(username, password)
     term.clear()
     term.setCursorPos(1,1)
     print("Fetching your mail...")
@@ -93,7 +100,7 @@ function view_mail(username)
         password = password
     }
 
-    local response = http_request("/receive_mail", "GET", data)
+    local response = http_post("/receive_mail", data)
     if response and response.status == "success" then
         print("Your mail:")
         for i, mail in ipairs(response.mail) do
@@ -101,7 +108,7 @@ function view_mail(username)
             print("   Message: " .. mail.message)
         end
     else
-        print("Error: " .. (response.message or "No mail found"))
+        print("Error: " .. (response and response.message or "No mail found"))
     end
 end
 
@@ -117,7 +124,7 @@ local username, password
 if choice == "1" then
     register_user()
 elseif choice == "2" then
-    username = login_user()
+    username, password = login_user()
     if username then
         print("Welcome, " .. username .. "!")
     else
@@ -136,13 +143,12 @@ while true do
     local action = read()
     
     if action == "1" then
-        send_mail(username)
+        send_mail(username, password)
     elseif action == "2" then
-        view_mail(username)
+        view_mail(username, password)
     elseif action == "3" then
         break
     else
         print("Invalid choice.")
     end
 end
-
