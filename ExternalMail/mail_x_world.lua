@@ -189,7 +189,8 @@ while true do
     print("\nWhat would you like to do?")
     print("1. Send Mail")
     print("2. View Mail")
-    print("3. Exit")
+    print("3. Delete Mail")
+    print("4. Exit")
     local action = read()
 
     if action == "1" then
@@ -197,6 +198,8 @@ while true do
     elseif action == "2" then
         view_mail(username, password)
     elseif action == "3" then
+        delete_mail(username, password)
+    elseif action == "4" then
         term.clear()
         term.setCursorPos(1,1)
         print("Goodbye!")
