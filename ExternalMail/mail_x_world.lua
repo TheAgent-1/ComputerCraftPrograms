@@ -197,6 +197,9 @@ while true do
     elseif action == "2" then
         view_mail(username, password)
     elseif action == "3" then
+        term.clear()
+        term.setCursorPos(1,1)
+        print("Goodbye!")
         break
     else
         print("Invalid choice.")
