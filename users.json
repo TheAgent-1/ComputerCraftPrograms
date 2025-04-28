@@ -1,0 +1,15 @@
+{
+    "users": {
+        "a": {
+            "password": "a"
+        }
+    },
+    "mail_storage": {
+        "a": [
+            {
+                "from": "a",
+                "message": "Hi A, this is a message from the testing world"
+            }
+        ]
+    }
+}

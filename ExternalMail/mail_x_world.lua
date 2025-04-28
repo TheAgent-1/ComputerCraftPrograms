@@ -1,5 +1,5 @@
 -- Constants
-local SERVER_URL = "http://localhost:5000"  -- Replace with your server's URL
+local SERVER_URL = "http://192.168.1.40:5000"  -- Replace with your server URL
 
 -- Function to handle HTTP POST requests
 function http_post(endpoint, data)
@@ -19,6 +19,29 @@ function http_post(endpoint, data)
     end
 end
 
+-- Function to handle HTTP GET requests
+function http_get(endpoint, params)
+    local url = SERVER_URL .. endpoint
+    if params then
+        local query = {}
+        for k, v in pairs(params) do
+            table.insert(query, textutils.urlEncode(k) .. "=" .. textutils.urlEncode(v))
+        end
+        url = url .. "?" .. table.concat(query, "&")
+    end
+
+    local response = http.get(url)
+    if response then
+        local responseBody = response.readAll()
+        response.close()
+        local responseData = textutils.unserializeJSON(responseBody)
+        return responseData
+    else
+        print("HTTP GET request failed.")
+        return nil
+    end
+end
+
 -- Function to handle user registration
 function register_user()
     term.clear()
@@ -27,12 +50,12 @@ function register_user()
     local username = read()
     print("Enter your password: ")
     local password = read("*")
-    
+
     local data = {
         username = username,
         password = password
     }
-    
+
     local response = http_post("/register", data)
     if response and response.status == "success" then
         print("Registration successful!")
@@ -49,16 +72,16 @@ function login_user()
     local username = read()
     print("Enter your password: ")
     local password = read("*")
-    
+
     local data = {
         username = username,
         password = password
     }
-    
+
     local response = http_post("/login", data)
     if response and response.status == "success" then
         print("Login successful!")
-        return username, password  -- Return the logged-in username and password
+        return username, password  -- Return username and password
     else
         print("Error: " .. (response and response.message or "Unknown error"))
         return nil, nil
@@ -73,14 +96,14 @@ function send_mail(username, password)
     local recipient = read()
     print("Enter your message: ")
     local message = read()
-    
+
     local data = {
         username = username,
         password = password,
         recipient = recipient,
         message = message
     }
-    
+
     local response = http_post("/send_mail", data)
     if response and response.status == "success" then
         print("Mail sent to " .. recipient)
@@ -95,12 +118,12 @@ function view_mail(username, password)
     term.setCursorPos(1,1)
     print("Fetching your mail...")
 
-    local data = {
+    local params = {
         username = username,
         password = password
     }
 
-    local response = http_post("/receive_mail", data)
+    local response = http_get("/receive_mail", params)
     if response and response.status == "success" then
         print("Your mail:")
         for i, mail in ipairs(response.mail) do
@@ -141,7 +164,7 @@ while true do
     print("2. View Mail")
     print("3. Exit")
     local action = read()
-    
+
     if action == "1" then
         send_mail(username, password)
     elseif action == "2" then
