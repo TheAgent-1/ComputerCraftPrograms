@@ -1,6 +1,6 @@
 # ComputerCraftPrograms
 contact me to help with the setup
 
-MusicPlayer broken atm
+MusicPlayer and TicTacToe broken atm
 
 the_mute1 (discord)
