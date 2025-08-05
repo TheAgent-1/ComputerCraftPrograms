@@ -21,6 +21,9 @@ local tictactoeclient_url = "https://raw.githubusercontent.com/TheAgent-1/Comput
 --External Mail System--
 local externalmailclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/ExternalMail/mail_x_world.lua"
 
+--Stargate--
+local stargate_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Stargate/GateDial.lua"
+
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
     if response then
@@ -101,6 +104,12 @@ local function ExternalMailInstall() --Handles installing the external mail syst
     end
 end
 
+local function StargateInstall() --Handles installing the Stargate program
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Stargate program is currently broken.")
+end
+
 local function main() --Handles main screen
     term.clear()
     term.setCursorPos(1, 1)
@@ -110,6 +119,7 @@ local function main() --Handles main screen
     print("2 - Install Music Player (Broken)")
     print("3 - Install TicTacToe (Broken)")
     print("4 - Install External Mail System")
+    print("5 - Stargate")
     write("Select an option: ")
 
     local choice = read()
