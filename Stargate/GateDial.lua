@@ -18,7 +18,7 @@ local Gates = {
 
 -- Check if the interface exists
 if interface == nil then
-    error("No Stargate interface found.")
+    print("No Stargate interface found.")
 end
 
 -- Check if the interface is connected to the stargate
