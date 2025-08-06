@@ -10,9 +10,11 @@ local interface = peripheral.find("advanced_crystal_interface") or peripheral.fi
 
 -- List all Stargates and address
 local Gates = {
-    home = [{27,25,4,25,10,28,0}],
-    farms = [{26,6,14,31,11,29,0}]
+    home = {27,25,4,25,10,28,0},
+    farms = {26,6,14,31,11,29,0}
 }
+
+
 
 -- Check if the interface exists
 if interface == nil then
