@@ -15,7 +15,6 @@ local Gates = {
 }
 
 
-
 -- Check if the interface exists
 if interface == nil then
     print("No Stargate interface found.")
@@ -33,9 +32,9 @@ local function rotateToSymbol(symbol, direction)
     local current = interface.getCurrentSymbol()
     while current ~= symbol do
         if direction == "clockwise" then
-            interface.rotateClockwise()
+            interface.rotateClockwise(symbol)
         else
-            interface.rotateCounterClockwise()
+            interface.rotateAntiClockwise(symbol)
         end
         os.sleep(0.1)
         current = interface.getCurrentSymbol()
@@ -46,6 +45,7 @@ end
 local function dialStargate(address)
     if #address < 8 or #address > 9 then
         error("Invalid address length. Must be 8 or 9 symbols.")
+        
     end
 
     print("Beginning dialing sequence...")
@@ -56,10 +56,15 @@ local function dialStargate(address)
     for i, symbol in ipairs(address) do
         print("Dialing symbol " .. i .. ": " .. symbol)
         rotateToSymbol(symbol, direction)
-        interface.encodeChevron()
+        if interface.getCurrentSymbol() == symbol then
+            interface.openChevron()
+            os.sleep(1)
+            interface.encodeChevron()
+        end
+
         os.sleep(0.2)
         -- Alternate direction after each symbol
-        direction = (direction == "clockwise") and "counterClockwise" or "clockwise"
+        direction = (direction == "clockwise") and "antiClockwise" or "clockwise"
     end
 end
 
@@ -107,42 +112,39 @@ end
         
 -- main loop
 term.write("pulling latest command from API")
-local last_command = nil
+local last_action, last_from, last_to = nil, nil, nil
+
 while true do
     local response = http.get(API)
-
-    -- check if the command is meant for this computer
     if response then
         local body = response.readAll()
         response.close()
         local data = textutils.unserializeJSON(body)
 
         if data and data.action and data.from == stargateName then
-            -- the command is for this computer, now check if we havent already ran it
-            if data ~= last_command then
-                -- if we havent ran it, then check the the name to the address
-                local gate = Gates[data.to]
+            -- Compare only relevant fields, handling missing "to"
+            local is_new = data.action ~= last_action or data.from ~= last_from or data.to ~= last_to
 
-                -- if the command is a dial command, then dial the stargate
-                if data.action == "open" then
+            if is_new then
+                local gate = data.to and Gates[data.to] or nil
+
+                if data.action == "open" and gate then
                     dialStargate(gate)
                 end
-
-                -- if the command is a close command, then close the stargate using the from field
                 if data.action == "close" then
                     closeStargate()
                 end
-
-                -- if the command is a open iris command, then open the stargate iris using the from field
                 if data.action == "iris-open" then
                     openIris()
                 end
-
-                -- if the command is a close iris command, then close the stargate iris using the from field
                 if data.action == "iris-close" then
                     closeIris()
                 end
-            last_command = data
+
+                -- Update last command fields
+                last_action = data.action
+                last_from = data.from
+                last_to = data.to
             end
         end
     end
