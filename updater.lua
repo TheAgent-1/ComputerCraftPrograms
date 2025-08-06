@@ -7,6 +7,9 @@
 -- The program is written in Lua and uses the ComputerCraft API for file handling and terminal input/output.
 -- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
 
+--Self Update--
+local updater_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/main/updater.lua"
+
 --Mail System--
 local mailserver_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Mail/mail_server.lua"
 local mailclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Mail/mail_client.lua"
@@ -33,10 +36,23 @@ local function downloadFile(url, filename) --Handles downloading the selected fi
         file.write(content)
         file.close()
         print(filename .. " downloaded successfully.")
+        return true
     else
         print("Failed to download " .. filename)
     end
 end
+
+local function SelfUpdate()
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Running Self Update...")
+    if downloadFile(updater_url, "updater.lua") then
+        print("Self Update Complete. Please restart the program.")
+    else
+        print("Self Update Failed")
+    end
+end
+
 
 local function MailInstall() --Handles installing the mail system
     term.clear()
@@ -107,7 +123,16 @@ end
 local function StargateInstall() --Handles installing the Stargate program
     term.clear()
     term.setCursorPos(1, 1)
-    print("Stargate program is currently broken.")
+    print("Please select the installation type:")
+    print("1 - Client")
+    write("Select an option: ")
+
+    local choice = read()
+    if choice == "1" then
+        downloadFile(stargate_url, "GateDial.lua")
+    else
+        print("Invalid option. Exiting.")
+    end
 end
 
 local function main() --Handles main screen
@@ -138,6 +163,9 @@ local function main() --Handles main screen
 
     elseif choice == "4" then
         ExternalMailInstall()
+    
+    elseif choice == "5" then
+        StargateInstall()
 
     else
         print("Invalid option. Exiting.")
