@@ -139,6 +139,7 @@ local function main() --Handles main screen
     term.clear()
     term.setCursorPos(1, 1)
     print("Updater")
+    print("Use -1 to run Self Update")
     print("0 - Exit")
     print("1 - Install Mail System")
     print("2 - Install Music Player (Broken)")
@@ -152,6 +153,9 @@ local function main() --Handles main screen
         term.clear()
         term.setCursorPos(1, 1)
         return
+    elseif choice == "-1" then
+        SelfUpdate()
+        
     elseif choice == "1" then
         MailInstall()
    
