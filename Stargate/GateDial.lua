@@ -1,17 +1,17 @@
 -- Define the name of the stargate this computer is connected to
-local stargateName = "<Stargate>"
+local stargateName = "<Stargate>" --Placeholder
 
 -- Define API address
-local API = "192.168.1.41/sg-command"
-local status = "192.168.1.41/sg-status"
+local API = "http://192.168.1.41:5005/sg-command"
+local status = "http://192.168.1.41:5005/sg-status"
 
 -- Locate the Stargate interface peripheral
 local interface = peripheral.find("advanced_crystal_interface") or peripheral.find("crystal_interface") or peripheral.find("basic_interface")
 
 -- List all Stargates and address
-local Gates = {
-    home = {27,25,4,25,10,28,0},
-    farms = {26,6,14,31,11,29,0}
+local Gates = { --Placeholders
+    home = {27,25,4,25,10,28,3,0},
+    farms = {26,6,14,31,33,11,29,0}
 }
 
 
