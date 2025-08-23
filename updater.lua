@@ -1,6 +1,6 @@
 -- This program is a simple updater for various ComputerCraft programs.
--- It allows the user to download and install different programs from a GitHub repository.
--- The programs include a mail system, a music player, and a TicTacToe game.
+-- It allows the user to download and install different programs from a self-hosted repository.
+-- The programs include a mail system, a music player, a TicTacToe game, and Stargate utilities.
 -- The updater provides a menu for the user to select which program to install.
 -- It uses HTTP requests to download the files and saves them locally.
 -- The program is designed to be run in the ComputerCraft mod for Minecraft.
@@ -8,24 +8,26 @@
 -- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
 
 --Self Update--
-local updater_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/main/updater.lua"
+local updater_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/updater.lua"
 
 --Mail System--
-local mailserver_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Mail/mail_server.lua"
-local mailclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Mail/mail_client.lua"
+local mailserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Mail/mail_server.lua"
+local mailclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Mail/mail_client.lua"
 
 --Music Player--
-local musicplayer_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/MusicPlayer/MusicPlayer.lua"
+local musicplayer_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/MusicPlayer/MusicPlayer.lua"
 
 --TicTacToe--
-local tictactoeserver_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/TicTacToe/TicTacToe_server.lua"
-local tictactoeclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/TicTacToe/TicTacToe_client.lua"
+local tictactoeserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/TicTacToe/TicTacToe_server.lua"
+local tictactoeclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/TicTacToe/TicTacToe_client.lua"
 
 --External Mail System--
-local externalmailclient_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/ExternalMail/mail_x_world.lua"
+local externalmailclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/ExternalMail/mail_x_world.lua"
 
 --Stargate--
-local stargate_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/refs/heads/main/Stargate/GateDial.lua"
+local stargate_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDial.lua"
+local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialAuto.lua"
+local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
 
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
@@ -52,7 +54,6 @@ local function SelfUpdate()
         print("Self Update Failed")
     end
 end
-
 
 local function MailInstall() --Handles installing the mail system
     term.clear()
@@ -123,13 +124,19 @@ end
 local function StargateInstall() --Handles installing the Stargate program
     term.clear()
     term.setCursorPos(1, 1)
-    print("Please select the installation type:")
-    print("1 - Client")
+    print("Please select the Stargate program to install:")
+    print("1 - GateDial")
+    print("2 - GateDialAuto")
+    print("3 - GateDialManual")
     write("Select an option: ")
 
     local choice = read()
     if choice == "1" then
         downloadFile(stargate_url, "GateDial.lua")
+    elseif choice == "2" then
+        downloadFile(stargate_auto_url, "GateDialAuto.lua")
+    elseif choice == "3" then
+        downloadFile(stargate_manual_url, "GateDialManual.lua")
     else
         print("Invalid option. Exiting.")
     end
@@ -155,26 +162,17 @@ local function main() --Handles main screen
         return
     elseif choice == "-1" then
         SelfUpdate()
-        
     elseif choice == "1" then
         MailInstall()
-   
     elseif choice == "2" then
         MusicInstall()
-
     elseif choice == "3" then
         TicTacToeInstall()
-
     elseif choice == "4" then
         ExternalMailInstall()
-    
     elseif choice == "5" then
         StargateInstall()
-
     else
         print("Invalid option. Exiting.")
     end
 end
-
-
-main()
