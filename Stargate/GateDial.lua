@@ -1,4 +1,5 @@
 -- Stargate Dialer (API + Manual Control)
+-- NOW ON GITEA
 
 -- Define the name of the stargate this computer is connected to
 local stargateName = "<Stargate>" -- Change this to match your gate
