@@ -29,6 +29,9 @@ local stargate_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/b
 local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialAuto.lua"
 local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
 
+--Powerstation--
+local powerstation_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation.lua"
+
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
     if response then

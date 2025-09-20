@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Powerstation Control Panel</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { margin-bottom: 10px; }
+    .status, .control { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    label { display: inline-block; width: 150px; }
+    input[type="number"] { width: 80px; }
+    #response { margin-top: 10px; color: green; }
+</style>
+</head>
+<body>
+
+<h1>Powerstation Control Panel</h1>
+
+<!-- Status Readout -->
+<div class="status">
+    <h2>Status</h2>
+    <p>Energy: <span id="energy">0</span> / <span id="capacity">0</span> FE</p>
+    <p>Charge: <span id="charge">0</span>%</p>
+    <p>Stress: <span id="stress">0</span> / <span id="stressCap">0</span> SU</p>
+    <p>Stress %: <span id="stressPct">0</span>%</p>
+    <p>Speed: <span id="speed">0</span> RPM</p>
+    <p>API Control: <span id="apiLock">UNLOCKED</span></p>
+</div>
+
+<!-- Controls -->
+<div class="control">
+    <h2>Controls</h2>
+    <form id="controlForm">
+        <!-- Rotational Speed -->
+         <label for="actionSelect">Action:</label>
+        <select id="actionSelect">
+            <option value="set-speed">Set Speed</option>
+            <option value="stop">Stop</option>
+        </select><br><br>
+
+        <label for="speedInput">Speed (-256 to 256):</label>
+        <input type="number" id="speedInput" min="-256" max="256" value="0"><br><br>
+
+        
+
+        <!-- FE Control -->
+        <label for="feToggle">FE Flow:</label>
+        <select id="feToggle">
+            <option value="on">Allow</option>
+            <option value="off">Block</option>
+        </select><br><br>
+
+        <button type="submit">Submit Command</button>
+    </form>
+    <div id="response"></div>
+</div>
+
+<script>
+const apiBase = "http://192.168.1.41:5005/powerstation";
+
+// Elements
+const speedInput = document.getElementById("speedInput");
+const actionSelect = document.getElementById("actionSelect");
+const responseDiv = document.getElementById("response");
+
+// Update dropdown based on speed input
+speedInput.addEventListener("input", function() {
+    const speed = parseInt(speedInput.value);
+    if(speed === 0) {
+        actionSelect.value = "stop";
+    } else if(actionSelect.value === "stop") {
+        actionSelect.value = "set-speed";
+    }
+});
+
+// Fetch status every 2s
+async function updateStatus() {
+    try {
+        const res = await fetch(apiBase + "?status");
+        const data = await res.json();
+
+        document.getElementById("energy").textContent = data.energy;
+        document.getElementById("capacity").textContent = data.capacity;
+        document.getElementById("charge").textContent = data.charge_pct;
+        document.getElementById("stress").textContent = data.stress;
+        document.getElementById("stressCap").textContent = data.stress_cap;
+        document.getElementById("stressPct").textContent = data.stress_pct;
+        document.getElementById("speed").textContent = data.speed;
+        document.getElementById("apiLock").textContent = data.api_locked ? "LOCKED" : "UNLOCKED";
+    } catch (err) {
+        console.error("Failed to fetch status:", err);
+    }
+}
+
+// Submit control command
+document.getElementById("controlForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    let speed = parseInt(speedInput.value);
+    let action = actionSelect.value;
+    const feAction = document.getElementById("feToggle").value; // "on" or "off"
+
+    // Auto-switch to stop if speed is 0
+    if(speed === 0) action = "stop";
+
+    // Build command object
+    let cmd = { action };
+    if(action === "set-speed") cmd.value = speed;
+    cmd.fe = feAction;
+
+    try {
+        await fetch(apiBase + "?control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cmd)
+        });
+        responseDiv.textContent = "Command sent!";
+        responseDiv.style.color = "green";
+    } catch(err) {
+        responseDiv.textContent = "Failed to send command!";
+        responseDiv.style.color = "red";
+        console.error(err);
+    }
+});
+
+
+// Refresh status every 2 seconds
+setInterval(updateStatus, 2000);
+updateStatus(); // initial load
+</script>
+
+</body>
+</html>
