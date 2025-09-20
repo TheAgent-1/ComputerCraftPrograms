@@ -145,6 +145,17 @@ local function StargateInstall() --Handles installing the Stargate program
     end
 end
 
+local function PowerstationInstall() --Handles installing the Powerstation program
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Installing Powerstation...")
+    if downloadFile(powerstation_url, "Powerstation.lua") then
+        print("Powerstation installed successfully.")
+    else
+        print("Powerstation installation failed.")
+    end
+end
+
 local function main() --Handles main screen
     term.clear()
     term.setCursorPos(1, 1)
@@ -156,6 +167,7 @@ local function main() --Handles main screen
     print("3 - Install TicTacToe (Broken)")
     print("4 - Install External Mail System")
     print("5 - Stargate")
+    print("6 - Powerstation")
     write("Select an option: ")
 
     local choice = read()
