@@ -30,7 +30,8 @@ local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/
 local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
 
 --Powerstation--
-local powerstation_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation.lua"
+local powerstationserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Server.lua"
+local powerstationclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Client.lua"
 
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
@@ -148,11 +149,18 @@ end
 local function PowerstationInstall() --Handles installing the Powerstation program
     term.clear()
     term.setCursorPos(1, 1)
-    print("Installing Powerstation...")
-    if downloadFile(powerstation_url, "Powerstation.lua") then
-        print("Powerstation installed successfully.")
+    print("Please select the Powerstation program to install:")
+    print("1 - Powerstation Server")
+    print("2 - Powerstation Client")
+    write("Select an option: ")
+
+    local choice = read()
+    if choice == "1" then
+        downloadFile(powerstationserver_url, "Powerstation_Server.lua")
+    elseif choice == "2" then
+        downloadFile(powerstationclient_url, "Powerstation_Client.lua")
     else
-        print("Powerstation installation failed.")
+        print("Invalid option. Exiting.")
     end
 end
 
