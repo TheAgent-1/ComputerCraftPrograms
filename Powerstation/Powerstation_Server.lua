@@ -1,9 +1,9 @@
--- Powerstation Server
--- Docs-compliant, with operator input and API command polling
+-- Powerstation Server (Dashboard + API + Operator + Docs-Compliant)
 
 -- ==== CONFIG ====
 local API = "http://192.168.1.41:5005/powerstation"
 local computerName = "Powerstation_Main"
+local DASH_UPDATE_INTERVAL = 2 -- seconds
 
 -- ==== Setup modem ====
 local modem = peripheral.find("modem", function(_, m) return m.isWireless() end)
@@ -12,19 +12,8 @@ rednet.open(peripheral.getName(modem))
 
 -- ==== Client status table ====
 local latestStatus = {}
-
--- ==== Shorthand commands ====
-local shorthands = {
-    ["battery"] = { target = "Battery_1", action = "status-only" },
-    ["relay-on"] = { target = "Relay_1", action = "on" },
-    ["relay-off"] = { target = "Relay_1", action = "off" },
-    ["adapter-stop"] = { target = "Adapter_1", action = "stop" },
-    ["adapter-speed"] = { target = "Adapter_1", action = "set-speed" },
-    ["adapter-display"] = { target = "Adapter_1", action = "display" },
-    ["adapter-speedstatus"] = { target = "Adapter_1", action = "status-speed" },
-    ["adapter-stressstatus"] = { target = "Adapter_1", action = "status-stress" },
-    ["adapter-topSpeed"] = { target = "Adapter_1", action = "status-topSpeed" }
-}
+local apiLocked = false
+local feFlow = "on"
 
 -- ==== Send status to API ====
 local function sendStatusToAPI(client, data)
@@ -36,16 +25,6 @@ end
 -- ==== Handle incoming client status ====
 local function handleStatus(msg)
     latestStatus[msg.computerName] = msg.data
-
-    -- Print dashboard
-    term.clear()
-    term.setCursorPos(1,1)
-    print("=== Powerstation Status ===")
-    for name, data in pairs(latestStatus) do
-        print(("[%s] %s"):format(name, textutils.serialize(data)))
-    end
-
-    -- Forward to API
     sendStatusToAPI(msg.computerName, msg.data)
 end
 
@@ -59,59 +38,80 @@ local function pollAPI()
             local cmd = textutils.unserializeJSON(text)
             if cmd and cmd.computerName and cmd.action then
                 rednet.broadcast(cmd, "powerstation")
-                print("Sent API command:", cmd.action, "to", cmd.computerName)
             end
         end
         sleep(2)
     end
 end
 
--- ==== Operator command loop ====
+-- ==== Dashboard interface ====
+local function drawDashboard()
+    term.clear()
+    term.setCursorPos(1,1)
+    print("=== Powerstation Control (Manual) ===")
+
+    -- Energy
+    local totalEnergy, totalCapacity = 0, 0
+    for _, data in pairs(latestStatus) do
+        if data.fe then totalEnergy = totalEnergy + data.fe end
+        if data.capacity then totalCapacity = totalCapacity + data.capacity end
+    end
+    local chargePercent = totalCapacity > 0 and (totalEnergy / totalCapacity * 100) or 0
+
+    -- Stress / Speed (adapter example)
+    local adapter = latestStatus["Adapter_1"] or {}
+    local stress, stressCap = adapter.stress or 0, adapter.stressCapacity or 0
+    local stressPercent = stressCap > 0 and (stress / stressCap * 100) or 0
+    local speed = adapter.speed or 0
+
+    print(string.format("Energy: %d / %d FE", totalEnergy, totalCapacity))
+    print(string.format("Charge: %.2f%%", chargePercent))
+    print(string.format("Stress: %d / %d SU", stress, stressCap))
+    print(string.format("Stress %%: %.2f%%", stressPercent))
+    print(string.format("Speed: %d RPM", speed))
+    print("FE Flow: " .. feFlow)
+    print("API Control: " .. (apiLocked and "LOCKED" or "UNLOCKED"))
+    print("\nCommands: speed <value>, stop, fe <on|off>, lock, unlock, status, exit")
+end
+
+-- ==== Operator input handler ====
 local function operatorLoop()
     while true do
+        drawDashboard()
         write("> ")
         local line = read()
         local args = {}
         for w in string.gmatch(line, "%S+") do table.insert(args, w) end
 
-        local shorthand = shorthands[line:lower()]
-        if shorthand then
-            if shorthand.action == "status-only" then
-                print("Latest status for", shorthand.target, ":",
-                      textutils.serialize(latestStatus[shorthand.target] or {}))
-            elseif shorthand.action == "status-speed" then
-                print("Current speed for Adapter_1:", latestStatus["Adapter_1"] and latestStatus["Adapter_1"].speed or "N/A")
-            elseif shorthand.action == "status-stress" then
-                print("Current stress for Adapter_1:", latestStatus["Adapter_1"] and latestStatus["Adapter_1"].stress or "N/A")
-            elseif shorthand.action == "status-topSpeed" then
-                print("Top speed for Adapter_1:", latestStatus["Adapter_1"] and latestStatus["Adapter_1"].topSpeed or "N/A")
-            else
-                local cmd = { computerName = shorthand.target, type = "command", action = shorthand.action, value = args[2] }
-                rednet.broadcast(cmd, "powerstation")
-                print("Sent command:", shorthand.action, "to", shorthand.target)
-            end
+        if #args == 0 then goto continue end
 
-        elseif args[1] == "send" and #args >= 3 then
-            local target = args[2]
-            local action = args[3]
-            local value = args[4]
-            local cmd = { computerName = target, type = "command", action = action, value = value }
-            rednet.broadcast(cmd, "powerstation")
-            print("Sent command to", target, ":", action, value or "")
-
-        elseif args[1] == "exit" then
+        local cmdType = args[1]:lower()
+        if cmdType == "speed" and args[2] then
+            local val = tonumber(args[2]) or 0
+            rednet.broadcast({ computerName = "Adapter_1", type="command", action="set-speed", value=val }, "powerstation")
+        elseif cmdType == "stop" then
+            rednet.broadcast({ computerName = "Adapter_1", type="command", action="stop" }, "powerstation")
+        elseif cmdType == "fe" and args[2] then
+            local val = args[2]:lower()
+            if val == "on" or val == "off" then feFlow = val end
+        elseif cmdType == "lock" then
+            apiLocked = true
+        elseif cmdType == "unlock" then
+            apiLocked = false
+        elseif cmdType == "status" then
+            -- redrawDashboard automatically shows latest status
+        elseif cmdType == "exit" then
             print("Shutting down server...")
             return
-
         else
-            print("Unknown command. Available shorthands:")
-            for k,_ in pairs(shorthands) do print("  ", k) end
-            print("Or use full syntax: send <client> <action> [value]")
+            print("Unknown command")
         end
+        ::continue::
+        sleep(0.1)
     end
 end
 
--- ==== Status loop ====
+-- ==== Status listener loop ====
 local function statusLoop()
     while true do
         local sender, msg = rednet.receive("powerstation")
@@ -121,5 +121,13 @@ local function statusLoop()
     end
 end
 
--- ==== Run all loops in parallel ====
-parallel.waitForAny(statusLoop, operatorLoop, pollAPI)
+-- ==== Dashboard updater loop ====
+local function dashboardLoop()
+    while true do
+        drawDashboard()
+        sleep(DASH_UPDATE_INTERVAL)
+    end
+end
+
+-- ==== Run loops in parallel ====
+parallel.waitForAny(statusLoop, operatorLoop, pollAPI, dashboardLoop)
