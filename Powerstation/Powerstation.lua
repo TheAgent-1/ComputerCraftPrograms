@@ -16,8 +16,8 @@
 -- With API Lock Option
 
 -- ===== Peripherals =====
-local Accumulator1 = peripheral.find("modular_accumulator")
-local Accumulator2 = peripheral.find("modular_accumulator")
+local Accumulator1 = peripheral.find("modular_accumulator_0")
+local Accumulator2 = peripheral.find("modular_accumulator_1")
 local DigitalAdapter = peripheral.find("digital_adapter")
 
 -- Config

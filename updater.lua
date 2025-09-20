@@ -179,3 +179,5 @@ local function main() --Handles main screen
         print("Invalid option. Exiting.")
     end
 end
+
+main()
