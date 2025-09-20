@@ -187,6 +187,8 @@ local function main() --Handles main screen
         ExternalMailInstall()
     elseif choice == "5" then
         StargateInstall()
+    elseif choice == "6" then
+        PowerstationInstall()
     else
         print("Invalid option. Exiting.")
     end
