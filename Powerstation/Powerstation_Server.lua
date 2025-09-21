@@ -20,7 +20,7 @@ end
 
 -- ===== Functions =====
 function Accumulator()  -- Get accumulator status
-    local data = rednet.receive("powerstation_accumulator", 3) -- returns energy level over capacity and percentage (e.g., "5000/10000, 50%")
+    local id, data = rednet.receive("powerstation_accumulator", 3) -- returns energy level over capacity and percentage (e.g., "5000/10000, 50%")
     if data then 
         -- split data into two parts
         local energy, percentage = data:match("^(%d+/%d+),%s*(%d+%%)$")
@@ -35,7 +35,7 @@ function Relay(action)  -- Control the relay: "on", "off", or nil to just get st
     elseif action == "off" then
         rednet.broadcast("RELAY_OFF", "powerstation_relay")
     else
-        local data = rednet.receive("powerstation_relay", 3)
+        local id, data = rednet.receive("powerstation_relay", 3)
         if data then return data
         else return nil
         end
@@ -43,14 +43,14 @@ function Relay(action)  -- Control the relay: "on", "off", or nil to just get st
 end
 
 function speedometer() -- Get current speed
-    local data = rednet.receive("powerstation_speedometer", 3)
+    local id, data = rednet.receive("powerstation_speedometer", 3)
     if data then return data
     else return nil
     end
 end
 
 function stressometer() -- Get current stress
-    local data = rednet.receive("powerstation_stressometer", 3)
+    local id, data = rednet.receive("powerstation_stressometer", 3)
     if data then return data
     else return nil
     end
@@ -60,7 +60,7 @@ function RSC(action)  -- Control the RSC: <target_speed>, or nil to get status
     if action then
         rednet.broadcast("RSC_SET " .. tostring(action), "powerstation_rsc")
     else
-        local data = rednet.receive("powerstation_rsc", 3)
+        local id, data = rednet.receive("powerstation_rsc", 3)
         if data then return data
         else return nil
         end
