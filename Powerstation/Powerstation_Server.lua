@@ -1,163 +1,86 @@
--- Powerstation Server
--- Displays live dashboard, forwards API & operator commands to clients
+-- server.lua
 
--- ==== CONFIG ====
-local API = "http://192.168.1.41:5005/powerstation"
-local SERVER_PROTOCOL = "powerstation"
-local DASH_UPDATE_INTERVAL = 2 -- seconds
-
--- ==== Setup modem ====
-local modem = peripheral.find("modem", function(_, m) return m.isWireless() end)
-if not modem then error("No wireless modem found!") end
-rednet.open(peripheral.getName(modem))
-
--- ==== Status storage ====
-local latestStatus = {} -- keyed by computerName
-local apiLocked = false
-
--- ==== Send status to API ====
-local function sendStatusToAPI(client, data)
-    local payload = { computerName = client, data = data }
-    local ok, res = pcall(http.post, API, textutils.serializeJSON(payload), { ["Content-Type"] = "application/json" })
-    if ok and res then res.close() end
+-- Find a modem peripheral to use for rednet communication.
+local modem = peripheral.find("modem")
+if not modem then
+    error("No modem found. Please ensure a modem is attached to the computer.", 0)
 end
 
--- ==== Handle incoming client status ====
-local function handleStatus(msg)
-    if msg.computerName and msg.type == "status" then
-        latestStatus[msg.computerName] = msg.data
-        sendStatusToAPI(msg.computerName, msg.data)
+-- Open the rednet channel.
+rednet.open(modem)
+print("Server started and rednet is open. Listening for clients...")
+
+-- Table to store client data, using their ID as the key.
+local clients = {}
+
+-- Main loop to handle user input and rednet messages.
+while true do
+    -- Get a user command from the terminal.
+    local command = read()
+
+    -- Process the user command.
+    local args = {}
+    for arg in string.gmatch(command, "[^%s]+") do
+        table.insert(args, arg)
     end
-end
-
--- ==== Poll API for commands ====
-local function pollAPI()
-    while true do
-        local ok, res = pcall(http.get, API .. "?type=newest_command")
-        if ok and res then
-            local text = res.readAll()
-            res.close()
-            local cmd = textutils.unserializeJSON(text)
-            if cmd and cmd.computerName and cmd.action then
-                rednet.broadcast(cmd, SERVER_PROTOCOL)
-                print("Sent API command:", cmd.action, "to", cmd.computerName)
+    
+    local cmd = args[1]
+    
+    if cmd == "status" then
+        -- Display a dashboard of all client statuses.
+        term.clear()
+        term.setCursorPos(1, 1)
+        print("--- Client Status Dashboard ---")
+        if next(clients) == nil then
+            print("No clients connected yet.")
+        else
+            for id, data in pairs(clients) do
+                print(string.format("Client ID: %d", id))
+                print(string.format("  Accumulator Charge: %.2f%%", data.accumulator.percent))
+                print(string.format("  Rotational Speed Controller Speed: %d RPM", data.rsc.targetSpeed))
+                print(string.format("  Redstone Relay: %s", data.relay.powered and "ON" or "OFF"))
+                print(string.format("  Kinetic Stress: %.2f / %.2f SU", data.stressometer.stress, data.stressometer.capacity))
+                print("------------------------------")
             end
         end
-        sleep(2)
-    end
-end
-
--- ==== Draw dashboard ====
-local function drawDashboard()
-    term.clear()
-    term.setCursorPos(1,1)
-    print("=== Powerstation Control (Manual) ===")
-
-    if next(latestStatus) == nil then
-        print("No client data yet...")
-        return
-    end
-
-    for client, data in pairs(latestStatus) do
-        print("\n-- Client: " .. client .. " --")
-        -- Motor info
-        if data.speed then
-            print("Motor Speed: " .. data.speed .. " RPM")
-            print("Motor Stress: " .. (data.stress or 0) .. " SU")
-            print("Energy Consumed: " .. (data.energyConsumption or 0) .. " FE/t")
-        end
-        -- Accumulator info
-        if data.fe then
-            print("Energy: " .. data.fe .. " / " .. (data.capacity or 0) .. " FE")
-            local percent = (data.fe / (data.capacity or 1)) * 100
-            print(string.format("Charge: %.2f%%", percent))
-        end
-        -- Redstone relay
-        if data.feFlow then
-            print("FE Flow: " .. data.feFlow)
-            print("Throughput: " .. (data.throughput or 0) .. " FE/t")
-        end
-        -- Digital adapter
-        if data.adapter then
-            for k, v in pairs(data.adapter) do
-                print(k .. ": " .. v)
+        print("Enter a command (status, setSpeed <number>, relay <on/off>)...")
+        
+    elseif cmd == "setSpeed" then
+        -- Send a command to all clients to change the RSC speed.
+        local speed = tonumber(args[2])
+        if speed and speed >= -256 and speed <= 256 then
+            for id, _ in pairs(clients) do
+                rednet.send(id, { command = "setSpeed", value = speed })
+                print("Sent setSpeed command to client " .. id)
             end
-            if data.adapter.topSpeed then
-                print("Adapter Top Speed: " .. data.adapter.topSpeed)
+        else
+            print("Invalid speed. Please provide a number between -256 and 256.")
+        end
+
+    elseif cmd == "relay" then
+        -- Send a command to all clients to toggle the Redstone Relay.
+        local state = args[2]
+        if state == "on" then
+            for id, _ in pairs(clients) do
+                rednet.send(id, { command = "setRelay", value = true })
+                print("Sent relay ON command to client " .. id)
             end
-        end
-    end
-
-    print("\nAPI Control: " .. (apiLocked and "LOCKED" or "UNLOCKED"))
-    print("Commands: speed <value> <target>, stop <target>, fe <on|off> <target>, lock, unlock, status, exit")
-end
-
--- ==== Operator input handler ====
-local function operatorLoop()
-    while true do
-        drawDashboard()
-        write("> ")
-        local line = read()
-        local args = {}
-        for w in string.gmatch(line, "%S+") do table.insert(args, w) end
-
-        if #args > 0 then
-            local cmdType = args[1]:lower()
-            if cmdType == "speed" and args[2] and args[3] then
-                local val = tonumber(args[2]) or 0
-                local target = args[3]
-                rednet.broadcast({ computerName = target, type="command", action="set-speed", value=val }, SERVER_PROTOCOL)
-
-            elseif cmdType == "stop" and args[2] then
-                local target = args[2]
-                rednet.broadcast({ computerName = target, type="command", action="stop" }, SERVER_PROTOCOL)
-
-            elseif cmdType == "fe" and args[2] and args[3] then
-                local val = args[2]:lower()
-                local target = args[3]
-                if val == "on" or val == "off" then
-                    rednet.broadcast({ computerName = target, type="command", action="fe", value=val }, SERVER_PROTOCOL)
-                end
-
-            elseif cmdType == "lock" then
-                apiLocked = true
-
-            elseif cmdType == "unlock" then
-                apiLocked = false
-
-            elseif cmdType == "status" then
-                -- redraw occurs automatically
-
-            elseif cmdType == "exit" then
-                print("Shutting down server...")
-                return
-
-            else
-                print("Unknown command or missing target")
+        elseif state == "off" then
+            for id, _ in pairs(clients) do
+                rednet.send(id, { command = "setRelay", value = false })
+                print("Sent relay OFF command to client " .. id)
             end
+        else
+            print("Invalid relay state. Use 'on' or 'off'.")
         end
-
-        sleep(0.1)
+    else
+        print("Unknown command. Available commands: status, setSpeed <number>, relay <on/off>")
+    end
+    
+    -- Check for incoming rednet messages from clients.
+    local id, message = rednet.receive(5) -- Wait up to 5 seconds for a message.
+    if id and message and message.type == "status" then
+        -- Update the client's status in our table.
+        clients[id] = message.data
     end
 end
-
--- ==== Status listener loop ====
-local function statusLoop()
-    while true do
-        local sender, msg = rednet.receive(SERVER_PROTOCOL)
-        if msg then
-            handleStatus(msg)
-        end
-    end
-end
-
--- ==== Dashboard updater loop ====
-local function dashboardLoop()
-    while true do
-        drawDashboard()
-        sleep(DASH_UPDATE_INTERVAL)
-    end
-end
-
--- ==== Run loops in parallel ====
-parallel.waitForAny(statusLoop, operatorLoop, pollAPI, dashboardLoop)
