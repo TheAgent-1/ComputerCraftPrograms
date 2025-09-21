@@ -1,15 +1,14 @@
 -- Client
-device = "Accumulator"
-sleep = 1  
+device = "Accumulator"  -- Change for different devices
+sleep = 1
 
 -- Open wireless modem
 local modem = peripheral.find("modem", function(_, modem) return modem.isWireless() end)
-if modem then
-    rednet.open(peripheral.getName(modem))
-else
+if not modem then
     print("No wireless modem found!")
     return
 end
+rednet.open(peripheral.getName(modem))
 
 -- Wrap peripherals
 if device == "Accumulator" then
@@ -60,21 +59,20 @@ function Relay()
     end
 end
 
-function speedometer() -- Get current speed
+function speedometer()
     while true do
-        local speed = DigitalAdapter.getKineticSpeed("east")  -- Adjust direction as needed
+        local speed = DigitalAdapter.getKineticSpeed("east")
         rednet.broadcast(speed .. " RPM", "powerstation_speedometer")
         os.sleep(sleep)
     end
 end
 
-function stressometer() -- Get current stress
+function stressometer()
     while true do
-        local stress = DigitalAdapter.getKineticStress("west")  -- Adjust direction as needed
+        local stress = DigitalAdapter.getKineticStress("west")
         local maxStress = DigitalAdapter.getKineticCapacity("west")
         local percentage = math.floor((stress / maxStress) * 100)
-        local payload = stress .. "/" .. maxStress .. " SU, " .. percentage .. "%"
-        rednet.broadcast(payload, "powerstation_stressometer")
+        rednet.broadcast(stress .. "/" .. maxStress .. " SU, " .. percentage .. "%", "powerstation_stressometer")
         os.sleep(sleep)
     end
 end
