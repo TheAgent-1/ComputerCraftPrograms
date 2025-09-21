@@ -1,4 +1,4 @@
--- Powerstation Server (Dashboard + API + Operator + Docs-Compliant)
+-- Powerstation Server (Fixed, Dashboard + API + Operator + Docs-Compliant)
 
 -- ==== CONFIG ====
 local API = "http://192.168.1.41:5005/powerstation"
@@ -38,6 +38,7 @@ local function pollAPI()
             local cmd = textutils.unserializeJSON(text)
             if cmd and cmd.computerName and cmd.action then
                 rednet.broadcast(cmd, "powerstation")
+                print("Sent API command:", cmd.action, "to", cmd.computerName)
             end
         end
         sleep(2)
@@ -83,30 +84,37 @@ local function operatorLoop()
         local args = {}
         for w in string.gmatch(line, "%S+") do table.insert(args, w) end
 
-        if #args == 0 then goto continue end
+        if #args > 0 then
+            local cmdType = args[1]:lower()
+            if cmdType == "speed" and args[2] then
+                local val = tonumber(args[2]) or 0
+                rednet.broadcast({ computerName = "Adapter_1", type="command", action="set-speed", value=val }, "powerstation")
 
-        local cmdType = args[1]:lower()
-        if cmdType == "speed" and args[2] then
-            local val = tonumber(args[2]) or 0
-            rednet.broadcast({ computerName = "Adapter_1", type="command", action="set-speed", value=val }, "powerstation")
-        elseif cmdType == "stop" then
-            rednet.broadcast({ computerName = "Adapter_1", type="command", action="stop" }, "powerstation")
-        elseif cmdType == "fe" and args[2] then
-            local val = args[2]:lower()
-            if val == "on" or val == "off" then feFlow = val end
-        elseif cmdType == "lock" then
-            apiLocked = true
-        elseif cmdType == "unlock" then
-            apiLocked = false
-        elseif cmdType == "status" then
-            -- redrawDashboard automatically shows latest status
-        elseif cmdType == "exit" then
-            print("Shutting down server...")
-            return
-        else
-            print("Unknown command")
+            elseif cmdType == "stop" then
+                rednet.broadcast({ computerName = "Adapter_1", type="command", action="stop" }, "powerstation")
+
+            elseif cmdType == "fe" and args[2] then
+                local val = args[2]:lower()
+                if val == "on" or val == "off" then feFlow = val end
+
+            elseif cmdType == "lock" then
+                apiLocked = true
+
+            elseif cmdType == "unlock" then
+                apiLocked = false
+
+            elseif cmdType == "status" then
+                -- dashboard redraw automatically shows latest status
+
+            elseif cmdType == "exit" then
+                print("Shutting down server...")
+                return
+
+            else
+                print("Unknown command")
+            end
         end
-        ::continue::
+
         sleep(0.1)
     end
 end
