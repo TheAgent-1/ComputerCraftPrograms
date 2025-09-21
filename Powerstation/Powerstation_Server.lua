@@ -32,8 +32,10 @@ end
 function Relay(action)  -- Control the relay: "on", "off", or nil to just get status
     if action == "on" then
         rednet.broadcast("RELAY_ON", "powerstation_relay")
+        return "ON (command sent)"
     elseif action == "off" then
         rednet.broadcast("RELAY_OFF", "powerstation_relay")
+        return "OFF (command sent)"
     else
         local id, data = rednet.receive("powerstation_relay", 3)
         if data then return data
@@ -41,6 +43,7 @@ function Relay(action)  -- Control the relay: "on", "off", or nil to just get st
         end
     end
 end
+
 
 function speedometer() -- Get current speed
     local id, data = rednet.receive("powerstation_speedometer", 3)
