@@ -72,8 +72,8 @@ function stressometer() -- Get current stress
         local stress = DigitalAdapter.getKineticStress("west")  -- Adjust direction as needed
         local maxStress = DigitalAdapter.getKineticCapacity("west")
         local percentage = math.floor((stress / maxStress) * 100)
-        local payload = stress .. "/" .. maxStress .." SU, " .. percentage .. "%"
-        rednet.broadcast(stress .. " SU", "powerstation_stressometer")
+        local payload = stress .. "/" .. maxStress .. " SU, " .. percentage .. "%"
+        rednet.broadcast(payload, "powerstation_stressometer")
         os.sleep(sleep)
     end
 end

@@ -20,12 +20,12 @@ end
 
 -- ===== Functions =====
 function Accumulator()  -- Get accumulator status
-    local id, data = rednet.receive("powerstation_accumulator", 3) -- returns energy level over capacity and percentage (e.g., "5000/10000, 50%")
+    local id, data = rednet.receive("powerstation_accumulator", 3) -- returns energy level over capacity and percentage (e.g., "5000/10000FE, 50%")
     if data then 
         -- split data into two parts
-        local energy, percentage = data:match("^(%d+/%d+),%s*(%d+%%)$")
-        return energy .. " (" .. percentage .. ")"
-    else return nil
+        local energy, percentage = data:match("^(%d+/%d+FE),%s*(%d+%%)$")
+        return energy
+    else return "No data"
     end
 end
 
@@ -37,7 +37,7 @@ function Relay(action)  -- Control the relay: "on", "off", or nil to just get st
     else
         local id, data = rednet.receive("powerstation_relay", 3)
         if data then return data
-        else return nil
+        else return "No data"
         end
     end
 end
@@ -45,14 +45,14 @@ end
 function speedometer() -- Get current speed
     local id, data = rednet.receive("powerstation_speedometer", 3)
     if data then return data
-    else return nil
+    else return "No data"
     end
 end
 
 function stressometer() -- Get current stress
     local id, data = rednet.receive("powerstation_stressometer", 3)
     if data then return data
-    else return nil
+    else return "No data"
     end
 end
 
@@ -62,7 +62,7 @@ function RSC(action)  -- Control the RSC: <target_speed>, or nil to get status
     else
         local id, data = rednet.receive("powerstation_rsc", 3)
         if data then return data
-        else return nil
+        else return "No data"
         end
     end
 end
@@ -90,8 +90,7 @@ function mainLoop()
             print("Press Enter to continue...")
             read()
         elseif command == "relay" and (arg == "on" or arg == "off") then
-            Relay(arg)
-            print("Relay turned " .. Relay())
+            print("Relay: " .. Relay(arg))
             print("Press Enter to continue...")
             read()
         elseif command == "rsc" and tonumber(arg) then
