@@ -14,7 +14,7 @@ if device == "Accumulator" then
     accumulator1 = peripheral.wrap("left")
     accumulator2 = peripheral.wrap("right")
 elseif device == "Relay" then
-    end
+    -- No peripherals needed for relay control
 elseif device == "Speedometer" then
     DigitalAdapter = peripheral.wrap("back")
 elseif device == "Stressometer" then
