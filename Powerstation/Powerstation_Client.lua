@@ -43,7 +43,7 @@ end
 
 function Relay()  -- Control the relay: "on", "off", or nil to just get status
     while true do
-        data = rednet.receive("powerstation_relay", 0.1)
+        local id, data = rednet.receive("powerstation_relay", 0.1)
         if data then
             if data == "RELAY_ON" then
                 redstone.setOutput("back", true)
@@ -80,7 +80,7 @@ end
 
 function RSC()
     while true do
-        data = rednet.receive("powerstation_rsc", 0.1)
+        local id, data = rednet.receive("powerstation_rsc", 0.1)
         if data then
             local command, value = data:match("^(%S+)%s*(%S*)$")
             if command == "RSC_SET" and tonumber(value) then
