@@ -80,6 +80,8 @@ function mainLoop()
         if command == "status" then
             term.clear()
             term.setCursorPos(1,1)
+            print("=== Powerstation Status ===")
+            print("Fetching status...")
             -- create and set variables for each status
             energyStatus = Accumulator()
             relayStatus = Relay()
@@ -94,6 +96,8 @@ function mainLoop()
             if not stressStatus then stressStatus = "No data" end
             if not rscStatus then rscStatus = "No data" end
 
+            term.clear()
+            term.setCursorPos(1,1)
             print("=== Powerstation Status ===")
             print("Energy Level: " .. energyStatus)
             print("Relay status: " .. relayStatus)
