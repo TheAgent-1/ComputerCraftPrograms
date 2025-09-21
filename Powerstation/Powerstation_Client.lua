@@ -77,7 +77,7 @@ end
 
 -- Main program execution
 print("Client starting up...")
-print("My ID is " .. rednet.pullID())
+print("My ID is " .. os.computerID())
 
 -- Find the server ID. In this case, we'll just assume the server is the first message we receive.
 print("Waiting for server to send a message...")
