@@ -2,6 +2,7 @@
 device = "Accumulator"
 sleep = 1  
 
+-- Open wireless modem
 local modem = peripheral.find("modem", function(_, modem) return modem.isWireless() end)
 if modem then
     rednet.open(peripheral.getName(modem))
@@ -10,11 +11,12 @@ else
     return
 end
 
+-- Wrap peripherals
 if device == "Accumulator" then
     accumulator1 = peripheral.wrap("left")
     accumulator2 = peripheral.wrap("right")
 elseif device == "Relay" then
-    -- No peripherals needed for relay control
+    -- Relay uses redstone output only
 elseif device == "Speedometer" then
     DigitalAdapter = peripheral.wrap("back")
 elseif device == "Stressometer" then
@@ -24,7 +26,8 @@ elseif device == "RSC" then
 end
 
 -- ===== Functions =====
-function Accumulator()  -- Get accumulator status
+
+function Accumulator()
     while true do
         local feStored1 = accumulator1.getEnergy()
         local feStored2 = accumulator2.getEnergy()
@@ -33,27 +36,24 @@ function Accumulator()  -- Get accumulator status
         local totalStored = feStored1 + feStored2
         local totalCapacity = feCapacity1 + feCapacity2
         local percentage = math.floor((totalStored / totalCapacity) * 100)
-
-        -- Output Example: "5000/10000FE, 50%"
         local payload = totalStored .. "/" .. totalCapacity .. "FE, " .. percentage .. "%"
         rednet.broadcast(payload, "powerstation_accumulator")
         os.sleep(sleep)
     end
 end
 
-function Relay()  -- Control the relay: "on", "off", or nil to just get status
+function Relay()
     while true do
-        local id, data = rednet.receive("powerstation_relay", 0.1)
-        if data then
-            print("Relay command received: " .. data)
-            if data == "RELAY_ON" then
+        local event, senderId, message, protocol = os.pullEvent("rednet_message")
+        if protocol == "powerstation_relay" then
+            print("Relay command received: " .. message)
+            if message == "RELAY_ON" then
                 redstone.setOutput("back", true)
-            elseif data == "RELAY_OFF" then
+            elseif message == "RELAY_OFF" then
                 redstone.setOutput("back", false)
             end
-        else
-            local status = redstone.getOutput("back")
-            if status then status = "ON" else status = "OFF" end
+            -- Broadcast updated status back
+            local status = redstone.getOutput("back") and "ON" or "OFF"
             rednet.broadcast(status, "powerstation_relay")
         end
         os.sleep(sleep)
@@ -81,21 +81,22 @@ end
 
 function RSC()
     while true do
-        local id, data = rednet.receive("powerstation_rsc", 0.1)
-        if data then
-            print("RSC command received: " .. data)
-            local command, value = data:match("^(%S+)%s*(%S*)$")
-            if command == "RSC_SET" and tonumber(value) then
-                DigitalAdapter.setTargetSpeed("top", tonumber(value))  -- Adjust direction as needed
+        local event, senderId, message, protocol = os.pullEvent("rednet_message")
+        if protocol == "powerstation_rsc" then
+            print("RSC command received: " .. message)
+            local cmd, value = message:match("^(%S+)%s*(%S*)$")
+            if cmd == "RSC_SET" and tonumber(value) then
+                DigitalAdapter.setTargetSpeed("top", tonumber(value))
             end
-        else
-            local currentSpeed = DigitalAdapter.getTargetSpeed("top")  -- Adjust direction as needed
-            rednet.broadcast(currentSpeed .. " RPM", "powerstation_rsc")
         end
+        -- Always report current target speed
+        local currentSpeed = DigitalAdapter.getTargetSpeed("top")
+        rednet.broadcast(currentSpeed .. " RPM", "powerstation_rsc")
         os.sleep(sleep)
     end
 end
 
+-- ===== Main =====
 function main()
     if device == "Accumulator" then
         Accumulator()
@@ -108,10 +109,8 @@ function main()
     elseif device == "RSC" then
         RSC()
     else
-        print("Unknown device type specified.")
+        print("Unknown device type.")
     end
 end
-
-        
 
 main()
