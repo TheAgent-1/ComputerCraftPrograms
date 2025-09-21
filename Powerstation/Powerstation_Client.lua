@@ -1,89 +1,115 @@
--- client.lua
+-- Client
+device = "Accumulator"
+sleep = 1  
 
--- Find a modem peripheral to use for rednet communication.
-local modem = peripheral.find("modem")
-if not modem then
-    error("No modem found. Please ensure a modem is attached to the computer.", 0)
+local modem = peripheral.find("modem", function(_, modem) return modem.isWireless() end)
+if modem then
+    rednet.open(peripheral.getName(modem))
+else
+    print("No wireless modem found!")
+    return
 end
 
--- Find the other peripherals. You'll need to adjust the sides based on your setup.
--- For example, if your accumulator is on the "right" side, change "left" to "right".
-local accumulator = peripheral.wrap("left")
-local digitalAdapter = peripheral.wrap("right")
-local redstoneRelay = peripheral.wrap("bottom")
-local rsc = "top" -- Side of the Rotation Speed Controller on the Digital Adapter
+if device == "Accumulator" then
+    accumulator1 = peripheral.wrap("left")
+    accumulator2 = peripheral.wrap("right")
+elseif device == "Relay" then
+    end
+elseif device == "Speedometer" then
+    DigitalAdapter = peripheral.wrap("back")
+elseif device == "Stressometer" then
+    DigitalAdapter = peripheral.wrap("back")
+elseif device == "RSC" then
+    DigitalAdapter = peripheral.wrap("back")
+end
 
--- Open the rednet channel.
-rednet.open(peripheral.getName(modem))
-local serverID = 0 -- We'll find the server's ID dynamically
-
--- Function to send status updates to the server.
-local function sendStatus()
+-- ===== Functions =====
+function Accumulator()  -- Get accumulator status
     while true do
-        if serverID ~= 0 then
-            -- Gather all the data from the peripherals.
-            local statusData = {
-                accumulator = {
-                    energy = accumulator.getEnergy(),
-                    capacity = accumulator.getCapacity(),
-                    percent = accumulator.getPercent()
-                },
-                relay = {
-                    powered = redstoneRelay.isPowered()
-                },
-                rsc = {
-                    targetSpeed = digitalAdapter.getTargetSpeed(rsc)
-                },
-                stressometer = {
-                    stress = digitalAdapter.getKineticStress("top"), -- Assumes Stressometer is on top
-                    capacity = digitalAdapter.getKineticCapacity("top") -- Assumes Stressometer is on top
-                }
-            }
+        local feStored1 = accumulator1.getEnergy()
+        local feStored2 = accumulator2.getEnergy()
+        local feCapacity1 = accumulator1.getCapacity()
+        local feCapacity2 = accumulator2.getCapacity()
+        local totalStored = feStored1 + feStored2
+        local totalCapacity = feCapacity1 + feCapacity2
+        local percentage = math.floor((totalStored / totalCapacity) * 100)
 
-            -- Send the data to the server.
-            rednet.send(serverID, { type = "status", data = statusData })
-        end
-        
-        -- Wait for 5 seconds before sending the next update.
-        sleep(5)
+        -- Output Example: "5000/10000FE, 50%"
+        local payload = totalStored .. "/" .. totalCapacity .. "FE, " .. percentage .. "%"
+        rednet.broadcast(payload, "powerstation_accumulator")
+        os.sleep(sleep)
     end
 end
 
--- Function to listen for commands from the server.
-local function listenForCommands()
+function Relay()  -- Control the relay: "on", "off", or nil to just get status
     while true do
-        local id, message = rednet.receive(5) -- Wait up to 5 seconds for a message.
-        if id and message then
-            -- Check if the message is a command from our server.
-            if id == serverID then
-                if message.command == "setSpeed" then
-                    -- Set the speed of the Rotational Speed Controller.
-                    digitalAdapter.setTargetSpeed(rsc, message.value)
-                    print("Set RSC speed to " .. message.value)
-                elseif message.command == "setRelay" then
-                    -- Turn the Redstone Relay on or off.
-                    if message.value == true then
-                        redstone.setOutput("bottom", true)
-                        print("Turned Redstone Relay ON")
-                    else
-                        redstone.setOutput("bottom", false)
-                        print("Turned Redstone Relay OFF")
-                    end
-                end
+        data = rednet.receive("powerstation_relay", 0.1)
+        if data then
+            if data == "RELAY_ON" then
+                redstone.setOutput("back", true)
+            elseif data == "RELAY_OFF" then
+                redstone.setOutput("back", false)
             end
+        else
+            local status = redstone.getOutput("back")
+            if status then status = "ON" else status = "OFF" end
+            rednet.broadcast(status, "powerstation_relay")
         end
+        os.sleep(sleep)
     end
 end
 
--- Main program execution
-print("Client starting up...")
-print("My ID is " .. os.computerID())
+function speedometer() -- Get current speed
+    while true do
+        local speed = DigitalAdapter.getKineticSpeed("east")  -- Adjust direction as needed
+        rednet.broadcast(speed .. " RPM", "powerstation_speedometer")
+        os.sleep(sleep)
+    end
+end
 
--- Find the server ID. In this case, we'll just assume the server is the first message we receive.
-print("Waiting for server to send a message...")
-local id, message = rednet.receive()
-serverID = id
-print("Found server! ID: " .. serverID)
+function stressometer() -- Get current stress
+    while true do
+        local stress = DigitalAdapter.getKineticStress("west")  -- Adjust direction as needed
+        local maxStress = DigitalAdapter.getKineticCapacity("west")
+        local percentage = math.floor((stress / maxStress) * 100)
+        local payload = stress .. "/" .. maxStress .." SU, " .. percentage .. "%"
+        rednet.broadcast(stress .. " SU", "powerstation_stressometer")
+        os.sleep(sleep)
+    end
+end
 
--- Run both functions in parallel.
-parallel.waitForAll(sendStatus, listenForCommands)
+function RSC()
+    while true do
+        data = rednet.receive("powerstation_rsc", 0.1)
+        if data then
+            local command, value = data:match("^(%S+)%s*(%S*)$")
+            if command == "RSC_SET" and tonumber(value) then
+                DigitalAdapter.setTargetSpeed("top", tonumber(value))  -- Adjust direction as needed
+            end
+        else
+            local currentSpeed = DigitalAdapter.getTargetSpeed("top")  -- Adjust direction as needed
+            rednet.broadcast(currentSpeed .. " RPM", "powerstation_rsc")
+        end
+        os.sleep(sleep)
+    end
+end
+
+function main()
+    if device == "Accumulator" then
+        Accumulator()
+    elseif device == "Relay" then
+        Relay()
+    elseif device == "Speedometer" then
+        speedometer()
+    elseif device == "Stressometer" then
+        stressometer()
+    elseif device == "RSC" then
+        RSC()
+    else
+        print("Unknown device type specified.")
+
+end
+
+        
+
+main()

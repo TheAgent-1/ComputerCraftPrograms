@@ -1,86 +1,122 @@
--- server.lua
+-- Powerstation Control Server
+-- NOW ON GITEA
 
--- Find a modem peripheral to use for rednet communication.
-local modem = peripheral.find("modem")
-if not modem then
-    error("No modem found. Please ensure a modem is attached to the computer.", 0)
+-- Curently supported devices:
+-- Accumulator (status) - powerstation_accumulator
+-- Relay (on/off/status) - powerstation_relay
+-- Speedometer (status) - powerstation_speedometer
+-- Stressometer (status) - powerstation_stressometer
+-- RSC (set <target_speed>/status) - powerstation_rsc
+
+-- Server
+local modem = peripheral.find("modem", function(_, modem) return modem.isWireless() end)
+if modem then
+    rednet.open(peripheral.getName(modem))
+else
+    print("No wireless modem found!")
+    return
 end
 
--- Open the rednet channel.
-rednet.open(peripheral.getName(modem))
-print("Server started and rednet is open. Listening for clients...")
 
--- Table to store client data, using their ID as the key.
-local clients = {}
-
--- Main loop to handle user input and rednet messages.
-while true do
-    -- Get a user command from the terminal.
-    local command = read()
-
-    -- Process the user command.
-    local args = {}
-    for arg in string.gmatch(command, "[^%s]+") do
-        table.insert(args, arg)
+-- ===== Functions =====
+function Accumulator()  -- Get accumulator status
+    local data = rednet.receive("powerstation_accumulator", 3) -- returns energy level over capacity and percentage (e.g., "5000/10000, 50%")
+    if data then 
+        -- split data into two parts
+        local energy, percentage = data:match("^(%d+/%d+),%s*(%d+%%)$")
+        return energy .. " (" .. percentage .. ")"
+    else return nil
     end
-    
-    local cmd = args[1]
-    
-    if cmd == "status" then
-        -- Display a dashboard of all client statuses.
-        term.clear()
-        term.setCursorPos(1, 1)
-        print("--- Client Status Dashboard ---")
-        if next(clients) == nil then
-            print("No clients connected yet.")
-        else
-            for id, data in pairs(clients) do
-                print(string.format("Client ID: %d", id))
-                print(string.format("  Accumulator Charge: %.2f%%", data.accumulator.percent))
-                print(string.format("  Rotational Speed Controller Speed: %d RPM", data.rsc.targetSpeed))
-                print(string.format("  Redstone Relay: %s", data.relay.powered and "ON" or "OFF"))
-                print(string.format("  Kinetic Stress: %.2f / %.2f SU", data.stressometer.stress, data.stressometer.capacity))
-                print("------------------------------")
-            end
-        end
-        print("Enter a command (status, setSpeed <number>, relay <on/off>)...")
-        
-    elseif cmd == "setSpeed" then
-        -- Send a command to all clients to change the RSC speed.
-        local speed = tonumber(args[2])
-        if speed and speed >= -256 and speed <= 256 then
-            for id, _ in pairs(clients) do
-                rednet.send(id, { command = "setSpeed", value = speed })
-                print("Sent setSpeed command to client " .. id)
-            end
-        else
-            print("Invalid speed. Please provide a number between -256 and 256.")
-        end
+end
 
-    elseif cmd == "relay" then
-        -- Send a command to all clients to toggle the Redstone Relay.
-        local state = args[2]
-        if state == "on" then
-            for id, _ in pairs(clients) do
-                rednet.send(id, { command = "setRelay", value = true })
-                print("Sent relay ON command to client " .. id)
-            end
-        elseif state == "off" then
-            for id, _ in pairs(clients) do
-                rednet.send(id, { command = "setRelay", value = false })
-                print("Sent relay OFF command to client " .. id)
-            end
-        else
-            print("Invalid relay state. Use 'on' or 'off'.")
-        end
+function Relay(action)  -- Control the relay: "on", "off", or nil to just get status
+    if action == "on" then
+        rednet.broadcast("RELAY_ON", "powerstation_relay")
+    elseif action == "off" then
+        rednet.broadcast("RELAY_OFF", "powerstation_relay")
     else
-        print("Unknown command. Available commands: status, setSpeed <number>, relay <on/off>")
-    end
-    
-    -- Check for incoming rednet messages from clients.
-    local id, message = rednet.receive(5) -- Wait up to 5 seconds for a message.
-    if id and message and message.type == "status" then
-        -- Update the client's status in our table.
-        clients[id] = message.data
+        local data = rednet.receive("powerstation_relay", 3)
+        if data then return data
+        else return nil
+        end
     end
 end
+
+function speedometer() -- Get current speed
+    local data = rednet.receive("powerstation_speedometer", 3)
+    if data then return data
+    else return nil
+    end
+end
+
+function stressometer() -- Get current stress
+    local data = rednet.receive("powerstation_stressometer", 3)
+    if data then return data
+    else return nil
+    end
+end
+
+function RSC(action)  -- Control the RSC: <target_speed>, or nil to get status
+    if action then
+        rednet.broadcast("RSC_SET " .. tostring(action), "powerstation_rsc")
+    else
+        local data = rednet.receive("powerstation_rsc", 3)
+        if data then return data
+        else return nil
+        end
+    end
+end
+
+function mainLoop()
+    while true do
+        -- Listen for commands
+        term.clear()
+        term.setCursorPos(1,1)
+        print("=== Powerstation Control ===")
+        write("User >")
+
+        local input = read() -- Read user input
+        local command, arg = input:match("^(%S+)%s*(.-)%s*$") -- Split command and argument
+        if command == "status" then
+            term.clear()
+            term.setCursorPos(1,1)
+            print("=== Powerstation Status ===")
+            print("Energy Level: " .. Accumulator())
+            print("Relay status: " .. Relay())
+            print("Current Speed: " .. speedometer())
+            print("Current Stress: " .. stressometer())
+            print("RSC Speed: " .. RSC())
+
+            print("Press Enter to continue...")
+            read()
+        elseif command == "relay" and (arg == "on" or arg == "off") then
+            Relay(arg)
+            print("Relay turned " .. Relay())
+            print("Press Enter to continue...")
+            read()
+        elseif command == "rsc" and tonumber(arg) then
+            RSC(tonumber(arg))
+            print("RSC Speed set to " .. RSC())
+            print("Press Enter to continue...")
+            read()
+        elseif command == "lock" then
+            print("Lockout API... (not implemented)")
+            print("Press Enter to continue...")
+            read()
+        elseif command == "unlock" then
+            print("Unlock API... (not implemented)")
+            print("Press Enter to continue...")
+            read()
+        elseif command == "exit" then
+            print("Exiting Powerstation Control.")
+            break
+        else
+            print("Unknown command. Available commands: status, relay <on/off>, rsc <speed>, lock, unlock, exit")
+            print("Press Enter to continue...")
+            read()
+        end
+    end
+end
+
+        
+mainLoop()
