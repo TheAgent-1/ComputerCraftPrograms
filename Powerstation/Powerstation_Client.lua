@@ -107,7 +107,7 @@ function main()
         RSC()
     else
         print("Unknown device type specified.")
-
+    end
 end
 
         
