@@ -1,119 +1,126 @@
--- Powerstation Generic Client
--- Fully compliant with Create C&A peripheral docs
+-- Powerstation Client
+-- Sends live status to server, receives and executes commands
+-- Docs-compliant
 
 -- ==== CONFIG ====
-local computerName = "Client_1" -- Change per machine
+local computerName = "Adapter_1"       -- change per client
+local SERVER_PROTOCOL = "powerstation"
+local STATUS_INTERVAL = 3              -- seconds
+local FE_SIDE = "back"                  -- redstone side controlling FE flow
 
 -- ==== Setup modem ====
 local modem = peripheral.find("modem", function(_, m) return m.isWireless() end)
 if not modem then error("No wireless modem found!") end
 rednet.open(peripheral.getName(modem))
 
--- ==== Detect peripherals ====
-local peripherals = {}
-for _, name in ipairs(peripheral.getNames()) do
-    local pType = peripheral.getType(name)
-    if pType == "modular_accumulator"
-       or pType == "redstone_relay"
-       or pType == "digital_adapter" then
-        peripherals[pType] = peripheral.wrap(name)
-    end
-end
+-- ==== Peripheral Wrappers ====
+local motor, accumulator, relay, adapter
 
-if next(peripherals) == nil then
-    error("No supported peripherals found!")
-end
+-- Wrap electric motor
+local ok, err = pcall(function() motor = peripheral.find("electric_motor") end)
+if not ok then motor = nil end
 
--- ==== Status builder (docs-compliant) ====
+-- Wrap accumulator
+ok, err = pcall(function() accumulator = peripheral.find("modular_accumulator") end)
+if not ok then accumulator = nil end
+
+-- Wrap redstone relay
+ok, err = pcall(function() relay = peripheral.find("redstone_relay") end)
+if not ok then relay = nil end
+
+-- Wrap digital adapter
+ok, err = pcall(function() adapter = peripheral.find("digital_adapter") end)
+if not ok then adapter = nil end
+
+-- ==== Helper functions ====
 local function getStatus()
-    local status = { computerName = computerName, type = "status", data = {} }
+    local status = {}
 
-    -- Accumulator
-    if peripherals["modular_accumulator"] then
-        local bat = peripherals["modular_accumulator"]
-        status.data.fe = bat.getEnergy() or 0
-        status.data.capacity = bat.getCapacity() or 0
-        status.data.percent = bat.getPercent() or 0
+    -- Motor status
+    if motor then
+        status.speed = motor.getSpeed()
+        status.stress = motor.getStressCapacity()
+        status.energyConsumption = motor.getEnergyConsumption()
     end
 
-    -- Redstone Relay
-    if peripherals["redstone_relay"] then
-        local relay = peripherals["redstone_relay"]
-        status.data.state = relay.isPowered() and "on" or "off"
-        status.data.throughput = relay.getThroughput() or 0
+    -- Accumulator status
+    if accumulator then
+        status.fe = accumulator.getEnergy()
+        status.capacity = accumulator.getCapacity()
     end
 
-    -- Digital Adapter
-    if peripherals["digital_adapter"] then
-        local da = peripherals["digital_adapter"]
+    -- Redstone relay status
+    if relay then
+        status.feFlow = relay.isPowered() and "on" or "off"
+        status.throughput = relay.getThroughput()
+    end
 
-        -- Rotational Speed Controller (top side)
-        if da.getTargetSpeed then
-            status.data.targetSpeed = da.getTargetSpeed("top") or 0
+    -- Digital adapter
+    if adapter then
+        -- For simplicity, check main sides
+        local sides = {"top", "bottom", "north", "south", "east", "west"}
+        status.adapter = {}
+        for _, side in ipairs(sides) do
+            -- Speedometers
+            local ok, speed = pcall(adapter.getKineticSpeed, adapter, side)
+            if ok then status.adapter[side.."_speed"] = speed end
+            -- Stressometers
+            ok, stress = pcall(adapter.getKineticStress, adapter, side)
+            if ok then status.adapter[side.."_stress"] = stress end
         end
-
-        -- Speedometer (north side)
-        if da.getKineticSpeed then
-            status.data.speed = da.getKineticSpeed("north") or 0
-        end
-        if da.getKineticTopSpeed then
-            status.data.topSpeed = da.getKineticTopSpeed() or 0
-        end
-
-        -- Stressometer (bottom side)
-        if da.getKineticStress then
-            status.data.stress = da.getKineticStress("bottom") or 0
-        end
-        if da.getKineticCapacity then
-            status.data.stressCapacity = da.getKineticCapacity("bottom") or 0
-        end
+        status.adapter.topSpeed = adapter.getKineticTopSpeed()
     end
 
     return status
 end
 
--- ==== Command handler (docs-compliant) ====
-local function handleCommand(msg)
-    if not msg or msg.type ~= "command" then return end
-    local action, value = msg.action, msg.value
+-- ==== Send status to server ====
+local function sendStatus()
+    local msg = {
+        computerName = computerName,
+        type = "status",
+        data = getStatus()
+    }
+    rednet.broadcast(msg, SERVER_PROTOCOL)
+end
 
-    -- Redstone Relay commands
-    if peripherals["redstone_relay"] then
-        local relay = peripherals["redstone_relay"]
-        if action == "on" then relay.setState(true)
-        elseif action == "off" then relay.setState(false) end
-    end
+-- ==== Apply commands ====
+local function handleCommand(cmd)
+    if cmd.computerName ~= computerName then return end
+    if not cmd.action then return end
 
-    -- Rotational Speed Controller
-    if peripherals["digital_adapter"] then
-        local da = peripherals["digital_adapter"]
-        if action == "set-speed" then
-            da.setTargetSpeed("top", tonumber(value) or 0)
-        elseif action == "stop" then
-            da.setTargetSpeed("top", 0)
-        elseif action == "display" then
-            da.print(tostring(value) or "")
+    if cmd.action == "set-speed" and motor and cmd.value then
+        motor.setSpeed(tonumber(cmd.value) or 0)
+    elseif cmd.action == "stop" and motor then
+        motor.stop()
+    elseif cmd.action == "fe" and relay and cmd.value then
+        local val = tostring(cmd.value):lower()
+        if val == "on" then
+            redstone.setOutput(FE_SIDE, true)
+        elseif val == "off" then
+            redstone.setOutput(FE_SIDE, false)
         end
+    elseif cmd.action == "display" and adapter and cmd.value then
+        adapter.clear()
+        adapter.print(tostring(cmd.value))
     end
 end
 
--- ==== Loops ====
+-- ==== Status loop ====
 local function statusLoop()
     while true do
-        local status = getStatus()
-        rednet.broadcast(status, "powerstation")
-        sleep(3)
+        sendStatus()
+        sleep(STATUS_INTERVAL)
     end
 end
 
+-- ==== Command listener loop ====
 local function commandLoop()
     while true do
-        local sender, msg = rednet.receive("powerstation")
-        if msg and msg.computerName == computerName then
-            handleCommand(msg)
-        end
+        local sender, msg = rednet.receive(SERVER_PROTOCOL)
+        if msg then handleCommand(msg) end
     end
 end
 
--- Run both loops in parallel
+-- ==== Run loops in parallel ====
 parallel.waitForAny(statusLoop, commandLoop)
