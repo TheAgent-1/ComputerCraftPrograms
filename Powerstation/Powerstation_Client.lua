@@ -45,6 +45,7 @@ function Relay()  -- Control the relay: "on", "off", or nil to just get status
     while true do
         local id, data = rednet.receive("powerstation_relay", 0.1)
         if data then
+            print("Relay command received: " .. data)
             if data == "RELAY_ON" then
                 redstone.setOutput("back", true)
             elseif data == "RELAY_OFF" then
@@ -82,6 +83,7 @@ function RSC()
     while true do
         local id, data = rednet.receive("powerstation_rsc", 0.1)
         if data then
+            print("RSC command received: " .. data)
             local command, value = data:match("^(%S+)%s*(%S*)$")
             if command == "RSC_SET" and tonumber(value) then
                 DigitalAdapter.setTargetSpeed("top", tonumber(value))  -- Adjust direction as needed
