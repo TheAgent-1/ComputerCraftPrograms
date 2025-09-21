@@ -80,12 +80,26 @@ function mainLoop()
         if command == "status" then
             term.clear()
             term.setCursorPos(1,1)
+            -- create and set variables for each status
+            energyStatus = Accumulator()
+            relayStatus = Relay()
+            speedStatus = speedometer()
+            stressStatus = stressometer()
+            rscStatus = RSC()
+
+            -- Check if any status returned nil, if so, set to "No data"
+            if not energyStatus then energyStatus = "No data" end
+            if not relayStatus then relayStatus = "No data" end
+            if not speedStatus then speedStatus = "No data" end
+            if not stressStatus then stressStatus = "No data" end
+            if not rscStatus then rscStatus = "No data" end
+
             print("=== Powerstation Status ===")
-            print("Energy Level: " .. Accumulator() if Accumulator() else "No data")
-            print("Relay status: " .. Relay() if Relay() else "No data")
-            print("Current Speed: " .. speedometer() if speedometer() else "No data")
-            print("Current Stress: " .. stressometer() if stressometer() else "No data")
-            print("RSC Speed: " .. RSC() if RSC() else "No data")
+            print("Energy Level: " .. energyStatus)
+            print("Relay status: " .. relayStatus)
+            print("Current Speed: " .. speedStatus)
+            print("Current Stress: " .. stressStatus)
+            print("RSC Speed: " .. rscStatus)
 
             print("Press Enter to continue...")
             read()
