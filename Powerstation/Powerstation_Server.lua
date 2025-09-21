@@ -7,7 +7,7 @@ if not modem then
 end
 
 -- Open the rednet channel.
-rednet.open(modem)
+rednet.open(peripheral.getName(modem))
 print("Server started and rednet is open. Listening for clients...")
 
 -- Table to store client data, using their ID as the key.

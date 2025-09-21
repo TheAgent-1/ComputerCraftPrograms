@@ -14,7 +14,7 @@ local redstoneRelay = peripheral.wrap("bottom")
 local rsc = "top" -- Side of the Rotation Speed Controller on the Digital Adapter
 
 -- Open the rednet channel.
-rednet.open(modem)
+rednet.open(peripheral.getName(modem))
 local serverID = 0 -- We'll find the server's ID dynamically
 
 -- Function to send status updates to the server.
