@@ -8,8 +8,28 @@ local stargateName = "<Stargate>" -- Change this to match your gate
 local API = "http://192.168.1.41:5005/sg-command"
 local status = "http://192.168.1.41:5005/sg-status"
 
--- Locate the Stargate interface peripheral
-local interface = peripheral.find("advanced_crystal_interface") or peripheral.find("crystal_interface") or peripheral.find("basic_interface")
+-- Locate the Stargate interface peripheral and set '<type>'
+local interface = nil
+local interfaceType = nil
+
+if peripheral.find("advanced_crystal_interface")
+    interface = peripheral.find("advanced_crystal_interface")
+    interfaceType = "advanced_crystal_interface"
+
+elseif peripheral.find("crystal_interface")
+    interface = peripheral.find("crystal_interface")
+    interfaceType = "crystal_interface"
+
+elseif peripheral.find("basic_interface")
+    interface = peripheral.find("basic_interface")
+    interfaceType = "basic_interface"
+end
+
+-- kill if not interface
+if not interface then
+    error("[STOP CODE: SG-NOINTERFACE] No Stargate interface found. Check your connections.")
+end
+
 
 -- List Stargates and addresses
 local Gates = {
@@ -34,7 +54,13 @@ end
 
 local function dialStargate(address)
     -- Crystal or Advanced interface
-    
+    if interfaceType == "advanced_crystal_interface" or interfaceType == "crystal_interface" then
+        for i, symbol in ipairs(address) do
+            print("Dialing symbol " .. i .. ": " .. symbol)
+            interface.engageSymbol(symbol)
+        end
+        return
+    end
 
     -- Basic Interface
     if #address < 8 or #address > 9 then
@@ -42,7 +68,6 @@ local function dialStargate(address)
     end
 
     print("Beginning dialing sequence...")
-
     local direction = "clockwise"
     for i, symbol in ipairs(address) do
         print("Dialing symbol " .. i .. ": " .. symbol)
@@ -99,7 +124,12 @@ local function apiLoop()
         if response then
             local body = response.readAll()
             response.close()
-            local data = textutils.unserializeJSON(body)
+            local ok, data = pcall(textutils.unserializeJSON, body)
+            if not ok or type(data) ~= "table" then
+                print("[API] Failed to parse JSON or got invalid data")
+            else
+                -- proceed with existing API logic
+            end
 
             if data and data.action and data.from == stargateName then
                 local is_new = data.action ~= last_action or data.from ~= last_from or data.to ~= last_to
@@ -135,9 +165,12 @@ local function manualLoop()
 
         if cmd == "dial" and arg ~= "" then
             if string.find(arg, "-") then
-                -- Accept raw Stargate address
-                dialStargate(arg)
-            else
+                -- Convert raw address string to table
+                local rawAddress = {}
+                for symbol in string.gmatch(arg, "%d+") do
+                    table.insert(rawAddress, tonumber(symbol))
+                end
+                dialStargate(rawAddress)
 
                 local gate = Gates[arg]
                 if gate and #gate > 0 then dialStargate(gate)
