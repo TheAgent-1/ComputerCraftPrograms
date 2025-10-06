@@ -33,6 +33,10 @@ local function rotateToSymbol(symbol, direction)
 end
 
 local function dialStargate(address)
+    -- Crystal or Advanced interface
+    
+
+    -- Basic Interface
     if #address < 8 or #address > 9 then
         error("Invalid address length. Must be 8 or 9 symbols.")
     end
@@ -119,6 +123,7 @@ local function manualLoop()
         term.clear()
         term.setCursorPos(1,1)
         print("Stargate Dialer")
+        print("Interface: " ..interface..)
         print("Available Stargates:")
         for name, address in pairs(Gates) do
             print(name .. ": " .. table.concat(address, ", "))
@@ -129,9 +134,17 @@ local function manualLoop()
         local cmd, arg = command:match("^(%S+)%s*(%S*)$")
 
         if cmd == "dial" and arg ~= "" then
-            local gate = Gates[arg]
-            if gate and #gate > 0 then dialStargate(gate)
-            else print("Unknown gate or address not set.") end
+            if string.find(arg, "-") then
+                -- Accept raw Stargate address
+                dialStargate(arg)
+            else
+
+                local gate = Gates[arg]
+                if gate and #gate > 0 then dialStargate(gate)
+                else 
+                    print("Unknown gate or address not set.")
+                end
+            end
         elseif cmd == "close" then closeStargate()
         elseif cmd == "iris-open" then openIris()
         elseif cmd == "iris-close" then closeIris()
