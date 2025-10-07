@@ -143,6 +143,8 @@ local function StargateInstall() --Handles installing the Stargate program
         downloadFile(stargate_auto_url, "GateDialAuto.lua")
     elseif choice == "3" then
         downloadFile(stargate_manual_url, "GateDialManual.lua")
+    elseif choice == "4" then
+        downloadFile(stargate_gpt_url, "CGPTGateDial.lua")
     else
         print("Invalid option. Exiting.")
     end
