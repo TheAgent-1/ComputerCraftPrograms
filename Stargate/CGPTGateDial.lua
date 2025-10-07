@@ -1,7 +1,7 @@
 --[[
 ==========================================
-  STARGATE DIALING COMPUTER v4.3
-  FIX: Using CORRECT rotation API!
+  STARGATE DIALING COMPUTER v5.0
+  Complete working version with all fixes
 ==========================================
 ]]
 
@@ -127,13 +127,18 @@ local function detectGateType()
 end
 
 local function detectIris()
-    state.hasIris = hasMethod(interface, "closeIris") or hasMethod(interface, "openIris")
+    state.hasIris = hasMethod(interface, "closeIris") or 
+                    hasMethod(interface, "openIris") or
+                    hasMethod(interface, "getIris")
     
     if state.hasIris then
         log("Iris: DETECTED", colors.green)
         
         if hasMethod(interface, "isIrisClosed") then
             state.irisClosed = interface.isIrisClosed()
+        elseif hasMethod(interface, "getIris") then
+            local irisState = interface.getIris()
+            state.irisClosed = (irisState == "CLOSED")
         end
     else
         log("Iris: NOT FOUND", colors.yellow)
@@ -185,10 +190,13 @@ local function updateEnergy()
             state.energyMax = 1000000
         end
     else
-        -- No energy methods - set defaults
         state.energy = 0
         state.energyMax = 1
     end
+    
+    -- Ensure no nil values
+    state.energy = state.energy or 0
+    state.energyMax = state.energyMax or 1
 end
 
 local function updateGateStatus()
@@ -234,8 +242,13 @@ local function updateGateStatus()
         end
     end
     
-    if state.hasIris and hasMethod(interface, "isIrisClosed") then
-        state.irisClosed = interface.isIrisClosed()
+    if state.hasIris then
+        if hasMethod(interface, "isIrisClosed") then
+            state.irisClosed = interface.isIrisClosed()
+        elseif hasMethod(interface, "getIris") then
+            local irisState = interface.getIris()
+            state.irisClosed = (irisState == "CLOSED")
+        end
     end
 end
 
@@ -345,7 +358,7 @@ local function dialCrystalInterface(address)
 end
 
 -- ============================================
--- DIALING SYSTEM - BASIC INTERFACE (CORRECTED!)
+-- DIALING SYSTEM - BASIC INTERFACE (FIXED!)
 -- ============================================
 
 local function dialBasicInterface(address)
@@ -382,7 +395,7 @@ local function dialBasicInterface(address)
     end
     
     -- Dial each symbol
-    local direction = "clockwise"  -- Alternate direction for realism
+    local direction = "clockwise"
     
     for i, targetSymbol in ipairs(address) do
         if i > 7 then 
@@ -390,7 +403,7 @@ local function dialBasicInterface(address)
         end
         
         log("=== CHEVRON " .. i .. " ===", colors.yellow)
-        log("Rotating to symbol: " .. targetSymbol, colors.lightBlue)
+        log("Target symbol: " .. targetSymbol, colors.lightBlue)
         
         -- Start rotation to target symbol
         if direction == "clockwise" and hasRotateClockwise then
@@ -401,16 +414,15 @@ local function dialBasicInterface(address)
             interface.rotateAntiClockwise(targetSymbol)
         end
         
-        -- Wait for rotation to complete (with timeout)
+        -- Wait for rotation to complete
         log("Waiting for rotation...", colors.gray)
         local waitTime = 0
-        local maxWait = 10  -- 10 seconds timeout
+        local maxWait = 10
         
         while not interface.isCurrentSymbol(targetSymbol) and waitTime < maxWait do
             sleep(0.1)
             waitTime = waitTime + 0.1
             
-            -- Check for incoming
             if state.incoming then
                 log("INCOMING - ABORT", colors.red)
                 state.dialing = false
@@ -429,7 +441,7 @@ local function dialBasicInterface(address)
             log("Reached symbol " .. targetSymbol, colors.lime)
             log("Opening chevron " .. i .. "...", colors.cyan)
             
-            -- CORRECT SEQUENCE: openChevron() → wait → encodeChevron()
+            -- STEP 1: Open chevron
             local ok1, err1 = pcall(function()
                 interface.openChevron()
             end)
@@ -440,10 +452,11 @@ local function dialBasicInterface(address)
                 return false
             end
             
-            sleep(1)  -- Important: wait for chevron to open
+            sleep(1)  -- Wait for chevron to fully open
             
             log("Encoding chevron " .. i .. "...", colors.cyan)
             
+            -- STEP 2: Encode/lock the chevron
             local ok2, err2 = pcall(function()
                 interface.encodeChevron()
             end)
@@ -452,6 +465,17 @@ local function dialBasicInterface(address)
                 log("ERROR encoding chevron: " .. tostring(err2), colors.red)
                 state.dialing = false
                 return false
+            end
+            
+            -- STEP 3: Close chevron if method exists
+            if hasMethod(interface, "closeChevron") then
+                sleep(0.2)
+                local ok3, err3 = pcall(function()
+                    interface.closeChevron()
+                end)
+                if not ok3 then
+                    log("WARNING: closeChevron failed: " .. tostring(err3), colors.yellow)
+                end
             end
             
             sleep(0.2)
@@ -463,7 +487,7 @@ local function dialBasicInterface(address)
             return false
         end
         
-        -- Alternate direction for next symbol (like the show!)
+        -- Alternate direction for next symbol
         direction = (direction == "clockwise") and "anticlockwise" or "clockwise"
     end
     
@@ -471,7 +495,6 @@ local function dialBasicInterface(address)
     log("BASIC DIAL COMPLETE!", colors.green)
     return true
 end
-
 
 -- ============================================
 -- MAIN DIAL FUNCTION
@@ -526,7 +549,7 @@ local function drawButton(x, y, text, color)
 end
 
 local function drawProgressBar(x, y, width, current, max)
-    -- Add nil checks
+    -- Nil safety
     current = current or 0
     max = max or 1
     
@@ -763,7 +786,7 @@ end
 
 local function main()
     print("===================================")
-    print("  STARGATE DIALING COMPUTER v4.3")
+    print("  STARGATE DIALING COMPUTER v5.0")
     print("===================================")
     
     selfCheck()
