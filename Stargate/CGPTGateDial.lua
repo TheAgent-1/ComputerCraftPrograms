@@ -176,14 +176,18 @@ local function updateEnergy()
         state.energy = interface.getEnergy() or 0
         
         if hasMethod(interface, "getEnergyTarget") then
-            state.energyMax = interface.getEnergyTarget()
+            state.energyMax = interface.getEnergyTarget() or 1
         elseif hasMethod(interface, "getMaxEnergy") then
-            state.energyMax = interface.getMaxEnergy()
+            state.energyMax = interface.getMaxEnergy() or 1
         elseif hasMethod(interface, "getEnergyCapacity") then
-            state.energyMax = interface.getEnergyCapacity()
+            state.energyMax = interface.getEnergyCapacity() or 1
         else
             state.energyMax = 1000000
         end
+    else
+        -- No energy methods - set defaults
+        state.energy = 0
+        state.energyMax = 1
     end
 end
 
@@ -561,6 +565,10 @@ local function drawButton(x, y, text, color)
 end
 
 local function drawProgressBar(x, y, width, current, max)
+    -- Add nil checks
+    current = current or 0
+    max = max or 1
+    
     local percent = (max > 0) and (current / max) or 0
     local filled = math.floor(width * percent)
     
