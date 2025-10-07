@@ -118,6 +118,68 @@ local function render()
     end
 end
 
+-- ======= CHEVRON SEQUENCE =======
+local function dialStargate(address)
+    dialing = true
+    local direction = "clockwise"
+    for i,symbol in ipairs(address) do
+        if interfaceType=="advanced_crystal_interface" or interfaceType=="crystal_interface" then
+            interface.engageSymbol(symbol)
+        else
+            -- Basic Interface
+            local current = interface.getCurrentSymbol()
+            while current ~= symbol do
+                if direction=="clockwise" then
+                    interface.rotateClockwise(symbol)
+                else
+                    interface.rotateAntiClockwise(symbol)
+                end
+                os.sleep(0.1)
+                current = interface.getCurrentSymbol()
+            end
+            interface.encodeChevron()
+        end
+        
+        if i<=7 then
+            chevrons[i]=true
+            addLog("Chevron "..i.." locked!")
+        end
+        render()
+        os.sleep(0.5)
+        
+        -- Abort if gate suddenly connects
+        if interface.isStargateConnected() and i<#address then
+            addLog("Incoming wormhole detected — aborting outgoing sequence.")
+            interface.disconnectStargate()
+            for i=1,7 do chevrons[i]=false end
+            dialing=false
+            return
+        end
+        
+        -- Reverse spin direction for next symbol (Basic)
+        if interfaceType=="basic_interface" then
+            direction = (direction=="clockwise") and "antiClockwise" or "clockwise"
+        end
+    end
+    
+    -- Wait for kawoosh / wormhole open
+    while not interface.isWormholeOpen() do
+        os.sleep(0.1)
+    end
+    addLog("Wormhole established!")
+    dialing=false
+end
+
+local function dialGate(address)
+    if interface.isStargateConnected() then
+        addLog("Cannot dial — gate already connected!")
+        return
+    end
+    local addrStr = (interface.addressToString and interface.addressToString(address)) or table.concat(address,"-")
+    addLog("Dialing "..addrStr.."...")
+    dialStargate(address)
+end
+
 -- ======= DESTINATION OVERLAY =======
 local function showDestinationOverlay()
     overlayActive = true
