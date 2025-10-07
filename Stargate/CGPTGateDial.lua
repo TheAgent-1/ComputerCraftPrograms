@@ -2,10 +2,10 @@
 ==========================================
   STARGATE DIALING COMPUTER (SGC CONSOLE)
   Author: Jacob Croul
-This program controls a Stargate via the
-Stargate Journey mod using a connected
-ComputerCraft terminal and monitor.
-It simulates the SGC's Dialing Computer.
+  This program controls a Stargate via the
+  Stargate Journey mod using a connected
+  ComputerCraft terminal and monitor.
+  It simulates the SGC's Dialing Computer.
   Version: 1.1 (Hybrid Input, Iris Fix, UI polish)
 ==========================================
 ]]
