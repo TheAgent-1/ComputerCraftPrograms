@@ -471,11 +471,7 @@ local function dialBasicInterface(address)
     log("BASIC DIAL COMPLETE!", colors.green)
     return true
 end
-    
-    state.dialing = false
-    log("BASIC DIAL COMPLETE!", colors.green)
-    return true
-end
+
 
 -- ============================================
 -- MAIN DIAL FUNCTION
