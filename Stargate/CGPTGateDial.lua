@@ -57,6 +57,7 @@ local energyPercent = 0
 local connectedAddr = "None"
 local lastAction = nil
 local dialing = false
+local overlayActive = false
 
 -- ======= UTILITY =======
 local function addLog(entry)
