@@ -81,31 +81,53 @@ end
 -- ======= GUI RENDER =======
 local function render()
     monitor.clear()
+    
     -- Header
     drawText(1,1,"SGC DIALING COMPUTER",colors.white)
     drawText(30,1,"[ Iris: " .. (irisClosed and "CLOSED " or "OPEN   ") .. "]", irisClosed and colors.red or colors.green)
     drawText(1,2,string.rep("-",45),colors.gray)
+    
     -- Status
     drawText(1,3,"Gate Status: "..status,colors.yellow)
-    drawText(1,4,"Connected Address: "..connectedAddr,colors.lightBlue)
+    
+    -- Connected Address (handle table or string)
+    local addrStr = "None"
+    if connectedAddr then
+        if type(connectedAddr) == "table" then
+            if interface.addressToString then
+                addrStr = interface.addressToString(connectedAddr)
+            else
+                addrStr = table.concat(connectedAddr,"-")
+            end
+        else
+            addrStr = tostring(connectedAddr)
+        end
+    end
+    drawText(1,4,"Connected Address: "..addrStr,colors.lightBlue)
+    
+    -- Energy
     drawText(1,5,"Energy: ",colors.orange)
     progressBar(10,5,20,energyPercent)
     drawText(31,5,energyPercent.."%",colors.orange)
+    
     -- Chevrons
     drawText(1,7,"Chevron Lock Progress:",colors.cyan)
     for i=1,7 do
         drawText(3,7+i,"Chevron "..i..": "..(chevrons[i] and "Locked ✓" or "Awaiting..."), chevrons[i] and colors.green or colors.gray)
     end
+    
     -- Buttons
     drawText(1,16,"[ Dial ]",colors.lime)
     drawText(10,16,"[ Disconnect ]",colors.red)
     drawText(26,16,"[ Iris Toggle ]",colors.cyan)
+    
     -- Logs
     drawText(1,18,"Event Log:",colors.white)
     for i,entry in ipairs(log) do
         drawText(3,18+i,entry,colors.gray)
     end
 end
+
 
 local function showDestinationOverlay()
     overlayActive = true
