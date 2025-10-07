@@ -25,11 +25,21 @@ local DESTINATIONS = {
 local monitor = peripheral.find("monitor")
 if not monitor then error("[SGC ERROR] No monitor connected.") end
 
--- Detect interface
-local interface = peripheral.find("advanced_crystal_interface")
-    or peripheral.find("crystal_interface")
-    or peripheral.find("basic_interface")
-local interfaceType = interface and (interface.getType and interface.getType() or "unknown") or nil
+-- Locate the Stargate interface peripheral and set type
+local interface = nil
+local interfaceType = nil
+
+if peripheral.find("advanced_crystal_interface") then
+    interface = peripheral.find("advanced_crystal_interface")
+    interfaceType = "advanced_crystal_interface"
+elseif peripheral.find("crystal_interface") then
+    interface = peripheral.find("crystal_interface")
+    interfaceType = "crystal_interface"
+elseif peripheral.find("basic_interface") then
+    interface = peripheral.find("basic_interface")
+    interfaceType = "basic_interface"
+end
+
 if not interface then
     error("[STOP CODE: SG-NOINTERFACE] No Stargate interface found. Check your connections.")
 end
@@ -192,7 +202,8 @@ local function dialGate(address)
         addLog("Cannot dial — gate already connected!")
         return
     end
-    addLog("Dialing "..addressToString(address).."...")
+    local addrStr = interface.addressToString and interface.addressToString(address) or "UNKNOWN"
+    addLog("Dialing "..addrStr.."...")
     simulateChevronLock(address)
 end
 
