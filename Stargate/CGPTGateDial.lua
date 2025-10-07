@@ -234,6 +234,7 @@ end
 
 -- ======= DESTINATION OVERLAY =======
 local function showDestinationOverlay()
+    overlayActive = true
     monitor.clear()
     drawText(1,1,"Select Destination:",colors.yellow)
     local y=3
@@ -245,15 +246,19 @@ local function showDestinationOverlay()
     end
     drawText(3,y,"Cancel",colors.red)
     local cancelY=y
+
     while true do
-        local _,_,x,yTouch = os.pullEvent("monitor_touch")
+        local _,_,xTouch,yTouch = os.pullEvent("monitor_touch")
         if yTouch==cancelY then break end
         if keys[yTouch] then
             dialGate(DESTINATIONS[keys[yTouch]])
             break
         end
     end
+
+    overlayActive = false
 end
+
 
 -- ======= API LOOP =======
 local function apiLoop()
@@ -282,14 +287,22 @@ end
 -- ======= INPUT LOOP =======
 local function inputLoop()
     while true do
-        local _,_,x,yTouch = os.pullEvent("monitor_touch")
-        if yTouch==16 then
-            if x>=1 and x<=7 then showDestinationOverlay() end
-            if x>=10 and x<=23 then closeGate() end
-            if x>=26 and x<=38 then toggleIris() end
+        local event, side, x, y = os.pullEvent("monitor_touch")
+        if not overlayActive then
+            if y == 16 then
+                if x >= 1 and x <= 7 then
+                    showDestinationOverlay()
+                elseif x >= 10 and x <= 23 then
+                    closeGate()
+                elseif x >= 26 and x <= 38 then
+                    toggleIris()
+                end
+            end
         end
+        -- ignore input while overlayActive=true
     end
 end
+
 
 -- ======= MAIN GUI LOOP =======
 local function guiLoop()
