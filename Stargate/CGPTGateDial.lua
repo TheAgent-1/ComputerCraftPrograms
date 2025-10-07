@@ -2,11 +2,12 @@
 ==========================================
   STARGATE DIALING COMPUTER (SGC CONSOLE)
   Author: Jacob Croul
-  This program controls a Stargate via the
-  Stargate Journey mod using a connected
-  ComputerCraft terminal and monitor.
-  It simulates the SGC's Dialing Computer.
-  Version: 1.1 (Hybrid Input, Iris Fix, UI polish)
+  Version: 2.0
+==========================================
+This program controls a Stargate via the
+Stargate Journey mod using a connected
+ComputerCraft terminal and monitor.
+It simulates the SGC's Dialing Computer.
 ==========================================
 ]]
 
@@ -14,21 +15,24 @@
 local STARGATE_NAME = "<Stargate>"
 local API_URL = "http://192.168.1.41:5005/sg-command"
 
--- Quick-dial addresses (add your own here)
-local knownAddresses = {
-    ["Abydos"] = "-26-6-14-31-11-29-",
-    ["Atlantis"] = "-5-8-9-16-3-20-",
-    ["Earth"] = "-1-2-3-4-5-6-"
+-- Define known gates here
+local DESTINATIONS = {
+    Abydos = {26,6,14,31,11,29,0},
+    Chulak = {12,8,19,24,5,9,0}
 }
 
 -- ======= INIT =======
 local monitor = peripheral.find("monitor")
 if not monitor then error("[SGC ERROR] No monitor connected.") end
 
+-- Detect interface
 local interface = peripheral.find("advanced_crystal_interface")
     or peripheral.find("crystal_interface")
     or peripheral.find("basic_interface")
-if not interface then error("[SGC ERROR] No Stargate interface found!") end
+local interfaceType = interface and (interface.getType and interface.getType() or "unknown") or nil
+if not interface then
+    error("[STOP CODE: SG-NOINTERFACE] No Stargate interface found. Check your connections.")
+end
 
 monitor.setTextScale(0.5)
 monitor.setBackgroundColor(colors.black)
@@ -38,10 +42,11 @@ monitor.clear()
 local irisClosed = true
 local status = "Idle"
 local log = {}
-local chevrons = {false, false, false, false, false, false, false}
+local chevrons = {false,false,false,false,false,false,false}
 local energyPercent = 0
 local connectedAddr = "None"
 local lastAction = nil
+local dialing = false
 
 -- ======= UTILITY =======
 local function addLog(entry)
@@ -49,58 +54,45 @@ local function addLog(entry)
     if #log > 6 then table.remove(log) end
 end
 
-local function drawText(x, y, text, color)
-    monitor.setCursorPos(x, y)
+local function drawText(x,y,text,color)
+    monitor.setCursorPos(x,y)
     monitor.setTextColor(color or colors.white)
     monitor.write(text)
 end
 
-local function progressBar(x, y, width, percent)
+local function progressBar(x,y,width,percent)
     local filled = math.floor(width * percent / 100)
     local bar = string.rep("#", filled) .. string.rep("-", width - filled)
-    monitor.setCursorPos(x, y)
+    monitor.setCursorPos(x,y)
     monitor.write("[" .. bar .. "]")
 end
 
 -- ======= GUI RENDER =======
 local function render()
     monitor.clear()
-
     -- Header
-    drawText(1, 1, "SGC DIALING COMPUTER", colors.white)
-    drawText(30, 1, "[ Iris: " .. (irisClosed and "CLOSED " or "OPEN   ") .. "]", irisClosed and colors.red or colors.green)
-    drawText(1, 2, string.rep("-", 45), colors.gray)
-
+    drawText(1,1,"SGC DIALING COMPUTER",colors.white)
+    drawText(30,1,"[ Iris: " .. (irisClosed and "CLOSED " or "OPEN   ") .. "]", irisClosed and colors.red or colors.green)
+    drawText(1,2,string.rep("-",45),colors.gray)
     -- Status
-    drawText(1, 3, "Gate Status: " .. status, colors.yellow)
-    drawText(1, 4, "Connected Address: " .. connectedAddr, colors.lightBlue)
-    drawText(1, 5, "Energy: ", colors.orange)
-    progressBar(10, 5, 20, energyPercent)
-    drawText(31, 5, energyPercent .. "%", colors.orange)
-
+    drawText(1,3,"Gate Status: "..status,colors.yellow)
+    drawText(1,4,"Connected Address: "..connectedAddr,colors.lightBlue)
+    drawText(1,5,"Energy: ",colors.orange)
+    progressBar(10,5,20,energyPercent)
+    drawText(31,5,energyPercent.."%",colors.orange)
     -- Chevrons
-    drawText(1, 7, "Chevron Lock Progress:", colors.cyan)
-    for i = 1, 7 do
-        drawText(3, 7 + i, "Chevron " .. i .. ": " .. (chevrons[i] and "Locked ✓" or "Awaiting..."), chevrons[i] and colors.green or colors.gray)
+    drawText(1,7,"Chevron Lock Progress:",colors.cyan)
+    for i=1,7 do
+        drawText(3,7+i,"Chevron "..i..": "..(chevrons[i] and "Locked ✓" or "Awaiting..."), chevrons[i] and colors.green or colors.gray)
     end
-
     -- Buttons
-    drawText(1, 16, "[ Dial ]", colors.lime)
-    drawText(10, 16, "[ Disconnect ]", colors.red)
-    drawText(26, 16, "[ Iris Toggle ]", colors.cyan)
-
-    -- Known destinations (optional)
-    drawText(1, 17, "Quick Dial:", colors.white)
-    local x = 3
-    for name, addr in pairs(knownAddresses) do
-        drawText(x, 18, "[" .. name .. "]", colors.lightBlue)
-        x = x + #name + 4
-    end
-
+    drawText(1,16,"[ Dial ]",colors.lime)
+    drawText(10,16,"[ Disconnect ]",colors.red)
+    drawText(26,16,"[ Iris Toggle ]",colors.cyan)
     -- Logs
-    drawText(1, 20, "Event Log:", colors.white)
-    for i, entry in ipairs(log) do
-        drawText(3, 20 + i, entry, colors.gray)
+    drawText(1,18,"Event Log:",colors.white)
+    for i,entry in ipairs(log) do
+        drawText(3,18+i,entry,colors.gray)
     end
 end
 
@@ -109,6 +101,9 @@ local function updateStatus()
     if interface.isStargateConnected() then
         status = "Active Wormhole"
         connectedAddr = interface.getConnectedAddress() or "Unknown"
+        if not dialing then
+            for i=1,7 do chevrons[i]=true end
+        end
     elseif interface.isStargateDialingOut() then
         status = "Dialing Out"
     elseif interface.isWormholeOpen() then
@@ -116,19 +111,20 @@ local function updateStatus()
     else
         status = "Idle"
         connectedAddr = "None"
+        for i=1,7 do chevrons[i]=false end
     end
-
-    local ok, e, cap = pcall(interface.getEnergy), pcall(interface.getEnergyCapacity)
-    if ok and type(e) == "number" and type(cap) == "number" then
-        energyPercent = math.floor(e / cap * 100)
+    if interface.getEnergy and interface.getEnergyCapacity then
+        energyPercent = math.floor(interface.getEnergy()/interface.getEnergyCapacity()*100)
     else
         energyPercent = 0
     end
 end
 
 local function toggleIris()
-    local ok, state = pcall(interface.getIris)
-    if not ok then addLog("Iris control unavailable.") return end
+    if not interface.getIris then
+        addLog("No iris installed.")
+        return
+    end
     if irisClosed then
         interface.openIris()
         addLog("Opening iris...")
@@ -143,45 +139,103 @@ local function closeGate()
     if interface.isStargateConnected() then
         addLog("Closing Stargate...")
         interface.disconnectStargate()
-        for i = 1, 7 do chevrons[i] = false end
+        for i=1,7 do chevrons[i]=false end
     else
         addLog("No active wormhole.")
     end
 end
 
-local function simulateChevronLock()
-    for i = 1, 7 do
-        chevrons[i] = true
+-- ======= CHEVRON SEQUENCE =======
+local function simulateChevronLock(address)
+    dialing = true
+    for i,symbol in ipairs(address) do
+        if interfaceType=="advanced_crystal_interface" or interfaceType=="crystal_interface" then
+            interface.engageSymbol(symbol)
+        else
+            -- Basic Interface
+            local direction="clockwise"
+            local current = interface.getCurrentSymbol()
+            while current~=symbol do
+                if direction=="clockwise" then
+                    interface.rotateClockwise(symbol)
+                else
+                    interface.rotateAntiClockwise(symbol)
+                end
+                os.sleep(0.1)
+                current = interface.getCurrentSymbol()
+            end
+            interface.openChevron()
+            os.sleep(1)
+            interface.encodeChevron()
+        end
+        if i<=7 then
+            chevrons[i]=true
+            addLog("Chevron "..i.." locked!")
+        end
         render()
-        os.sleep(0.4)
+        os.sleep(0.5)
+        -- Abort if gate suddenly connects
+        if interface.isStargateConnected() and i<#address then
+            addLog("Incoming wormhole detected — aborting outgoing sequence.")
+            interface.disconnectStargate()
+            for i=1,7 do chevrons[i]=false end
+            dialing=false
+            return
+        end
     end
-    addLog("Chevron 7 locked! Wormhole established.")
+    addLog("Chevron 7 locked — wormhole established!")
+    dialing=false
 end
 
 local function dialGate(address)
-    addLog("Dialing " .. address .. "...")
-    status = "Dialing Out"
-    render()
-    simulateChevronLock()
-    status = "Active Wormhole"
-    render()
+    if interface.isStargateConnected() then
+        addLog("Cannot dial — gate already connected!")
+        return
+    end
+    addLog("Dialing "..addressToString(address).."...")
+    simulateChevronLock(address)
 end
 
--- ======= API POLL LOOP =======
+-- ======= DESTINATION OVERLAY =======
+local function showDestinationOverlay()
+    monitor.clear()
+    drawText(1,1,"Select Destination:",colors.yellow)
+    local y=3
+    local keys={}
+    for name,address in pairs(DESTINATIONS) do
+        drawText(3,y,name,colors.lime)
+        keys[y]=name
+        y=y+1
+    end
+    drawText(3,y,"Cancel",colors.red)
+    local cancelY=y
+    while true do
+        local _,_,x,yTouch = os.pullEvent("monitor_touch")
+        if yTouch==cancelY then break end
+        if keys[yTouch] then
+            dialGate(DESTINATIONS[keys[yTouch]])
+            break
+        end
+    end
+end
+
+-- ======= API LOOP =======
 local function apiLoop()
     while true do
-        local response = http.get(API_URL)
-        if response then
-            local body = response.readAll()
-            response.close()
-            local data = textutils.unserializeJSON(body)
-            if data and data.action and data.from == STARGATE_NAME then
-                if data.action ~= lastAction then
-                    if data.action == "open" then dialGate(data.to or "UNKNOWN") end
-                    if data.action == "close" then closeGate() end
-                    if data.action == "iris-open" and irisClosed then toggleIris() end
-                    if data.action == "iris-close" and not irisClosed then toggleIris() end
-                    lastAction = data.action
+        if http then
+            local response = http.get(API_URL)
+            if response then
+                local body = response.readAll()
+                response.close()
+                local data = textutils.unserializeJSON(body)
+                if data and data.action and data.from==STARGATE_NAME then
+                    if data.action~=lastAction then
+                        if data.action=="open" then dialGate(DESTINATIONS[data.to] or {0}) end
+                        if data.action=="close" then closeGate() end
+                        if data.action=="iris-open" and irisClosed then toggleIris() end
+                        if data.action=="iris-close" and not irisClosed then toggleIris() end
+                        lastAction=data.action
+                    end
                 end
             end
         end
@@ -192,41 +246,16 @@ end
 -- ======= INPUT LOOP =======
 local function inputLoop()
     while true do
-        local _, _, x, y = os.pullEvent("monitor_touch")
-
-        -- Top buttons
-        if y == 16 then
-            if x >= 1 and x <= 7 then
-                term.setCursorPos(1, 1)
-                term.clear()
-                write("Enter destination address or name: ")
-                local input = read()
-                local addr = knownAddresses[input] or input
-                addLog("Manual dial to " .. input)
-                dialGate(addr)
-            elseif x >= 10 and x <= 23 then
-                closeGate()
-            elseif x >= 26 and x <= 38 then
-                toggleIris()
-            end
-        end
-
-        -- Quick dial buttons
-        if y == 18 then
-            local pos = 3
-            for name, addr in pairs(knownAddresses) do
-                local len = #name + 2
-                if x >= pos and x <= pos + len then
-                    dialGate(addr)
-                    break
-                end
-                pos = pos + len + 2
-            end
+        local _,_,x,yTouch = os.pullEvent("monitor_touch")
+        if yTouch==16 then
+            if x>=1 and x<=7 then showDestinationOverlay() end
+            if x>=10 and x<=23 then closeGate() end
+            if x>=26 and x<=38 then toggleIris() end
         end
     end
 end
 
--- ======= MAIN LOOP =======
+-- ======= MAIN GUI LOOP =======
 local function guiLoop()
     while true do
         updateStatus()
@@ -235,4 +264,5 @@ local function guiLoop()
     end
 end
 
-parallel.waitForAny(apiLoop, inputLoop, guiLoop)
+-- ======= RUN ALL =======
+parallel.waitForAny(apiLoop,inputLoop,guiLoop)
