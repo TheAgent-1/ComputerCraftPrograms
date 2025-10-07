@@ -28,6 +28,7 @@ local externalmailclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftProg
 local stargate_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDial.lua"
 local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialAuto.lua"
 local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
+local stargate_gpt_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/CGPTGateDial.lua"
 
 --Powerstation--
 local powerstationserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Server.lua"
@@ -132,6 +133,7 @@ local function StargateInstall() --Handles installing the Stargate program
     print("1 - GateDial")
     print("2 - GateDialAuto")
     print("3 - GateDialManual")
+    print("4 - ChatGPT's Attempt")
     write("Select an option: ")
 
     local choice = read()
