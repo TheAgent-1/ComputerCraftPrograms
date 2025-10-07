@@ -345,7 +345,7 @@ local function dialCrystalInterface(address)
 end
 
 -- ============================================
--- DIALING SYSTEM - BASIC INTERFACE (CORRECT!)
+-- DIALING SYSTEM - BASIC INTERFACE (CORRECTED!)
 -- ============================================
 
 local function dialBasicInterface(address)
@@ -359,24 +359,24 @@ local function dialBasicInterface(address)
         return false
     end
     
-    -- Determine available rotation methods
-    local hasRotateClockwise = hasMethod(interface, "rotateClockwise")
-    local hasRotateAntiClockwise = hasMethod(interface, "rotateAntiClockwise")
-    local hasRotateCounterClockwise = hasMethod(interface, "rotateCounterClockwise")
-    
-    if not (hasRotateClockwise or hasRotateAntiClockwise or hasRotateCounterClockwise) then
-        log("ERROR: No rotation methods!", colors.red)
+    if not hasMethod(interface, "openChevron") then
+        log("ERROR: Missing openChevron()", colors.red)
         state.dialing = false
         return false
     end
     
-    -- Determine encoding method
-    local hasRaiseLower = hasMethod(interface, "raiseChevron") and hasMethod(interface, "lowerChevron")
-    local hasEncode = hasMethod(interface, "encodeChevron")
-    local hasClose = hasMethod(interface, "closeChevron")
+    if not hasMethod(interface, "encodeChevron") then
+        log("ERROR: Missing encodeChevron()", colors.red)
+        state.dialing = false
+        return false
+    end
     
-    if not (hasRaiseLower or hasEncode or hasClose) then
-        log("ERROR: No chevron encode method!", colors.red)
+    -- Determine available rotation methods
+    local hasRotateClockwise = hasMethod(interface, "rotateClockwise")
+    local hasRotateAntiClockwise = hasMethod(interface, "rotateAntiClockwise")
+    
+    if not (hasRotateClockwise or hasRotateAntiClockwise) then
+        log("ERROR: No rotation methods!", colors.red)
         state.dialing = false
         return false
     end
@@ -393,46 +393,12 @@ local function dialBasicInterface(address)
         log("Rotating to symbol: " .. targetSymbol, colors.lightBlue)
         
         -- Start rotation to target symbol
-        local rotateSuccess = false
-        
         if direction == "clockwise" and hasRotateClockwise then
             log("Rotating CLOCKWISE to " .. targetSymbol, colors.gray)
-            local ok, err = pcall(function()
-                interface.rotateClockwise(targetSymbol)
-            end)
-            if ok then
-                rotateSuccess = true
-            else
-                log("ERROR: " .. tostring(err), colors.red)
-            end
-        elseif direction == "anticlockwise" or direction == "counterclockwise" then
-            if hasRotateAntiClockwise then
-                log("Rotating ANTICLOCKWISE to " .. targetSymbol, colors.gray)
-                local ok, err = pcall(function()
-                    interface.rotateAntiClockwise(targetSymbol)
-                end)
-                if ok then
-                    rotateSuccess = true
-                else
-                    log("ERROR: " .. tostring(err), colors.red)
-                end
-            elseif hasRotateCounterClockwise then
-                log("Rotating COUNTERCLOCKWISE to " .. targetSymbol, colors.gray)
-                local ok, err = pcall(function()
-                    interface.rotateCounterClockwise(targetSymbol)
-                end)
-                if ok then
-                    rotateSuccess = true
-                else
-                    log("ERROR: " .. tostring(err), colors.red)
-                end
-            end
-        end
-        
-        if not rotateSuccess then
-            log("Failed to start rotation!", colors.red)
-            state.dialing = false
-            return false
+            interface.rotateClockwise(targetSymbol)
+        elseif hasRotateAntiClockwise then
+            log("Rotating ANTICLOCKWISE to " .. targetSymbol, colors.gray)
+            interface.rotateAntiClockwise(targetSymbol)
         end
         
         -- Wait for rotation to complete (with timeout)
@@ -458,54 +424,53 @@ local function dialBasicInterface(address)
             return false
         end
         
-        log("Reached symbol " .. targetSymbol, colors.lime)
-        log("Encoding chevron " .. i .. "...", colors.cyan)
-        
-        -- Encode the chevron
-        local encodeSuccess = false
-        
-        if hasRaiseLower then
-            local ok1 = pcall(function()
-                interface.raiseChevron()
+        -- Verify we're at the correct symbol
+        if interface.isCurrentSymbol(targetSymbol) then
+            log("Reached symbol " .. targetSymbol, colors.lime)
+            log("Opening chevron " .. i .. "...", colors.cyan)
+            
+            -- CORRECT SEQUENCE: openChevron() → wait → encodeChevron()
+            local ok1, err1 = pcall(function()
+                interface.openChevron()
             end)
-            if ok1 then
-                sleep(0.5)
-                local ok2 = pcall(function()
-                    interface.lowerChevron()
-                end)
-                if ok2 then
-                    encodeSuccess = true
-                end
+            
+            if not ok1 then
+                log("ERROR opening chevron: " .. tostring(err1), colors.red)
+                state.dialing = false
+                return false
             end
-        elseif hasEncode then
-            local ok = pcall(function()
+            
+            sleep(1)  -- Important: wait for chevron to open
+            
+            log("Encoding chevron " .. i .. "...", colors.cyan)
+            
+            local ok2, err2 = pcall(function()
                 interface.encodeChevron()
             end)
-            if ok then
-                encodeSuccess = true
+            
+            if not ok2 then
+                log("ERROR encoding chevron: " .. tostring(err2), colors.red)
+                state.dialing = false
+                return false
             end
-        elseif hasClose then
-            local ok = pcall(function()
-                interface.closeChevron()
-            end)
-            if ok then
-                encodeSuccess = true
-            end
-        end
-        
-        if not encodeSuccess then
-            log("Failed to encode chevron!", colors.red)
+            
+            sleep(0.2)
+            state.chevrons[i] = true
+            log("Chevron " .. i .. " LOCKED!", colors.green)
+        else
+            log("ERROR: Not at correct symbol!", colors.red)
             state.dialing = false
             return false
         end
         
-        sleep(0.5)
-        state.chevrons[i] = true
-        log("Chevron " .. i .. " LOCKED!", colors.green)
-        
         -- Alternate direction for next symbol (like the show!)
         direction = (direction == "clockwise") and "anticlockwise" or "clockwise"
     end
+    
+    state.dialing = false
+    log("BASIC DIAL COMPLETE!", colors.green)
+    return true
+end
     
     state.dialing = false
     log("BASIC DIAL COMPLETE!", colors.green)
