@@ -106,6 +106,30 @@ local function render()
     end
 end
 
+local function showDestinationOverlay()
+    overlayActive = true
+    monitor.clear()
+    drawText(1,1,"Select Destination:",colors.yellow)
+    local y=3
+    local keys={}
+    for name,address in pairs(DESTINATIONS) do
+        drawText(3,y,name,colors.lime)
+        keys[y]=name
+        y=y+1
+    end
+    drawText(3,y,"Cancel",colors.red)
+    local cancelY=y
+    while true do
+        local _,_,x,yTouch = os.pullEvent("monitor_touch")
+        if yTouch==cancelY then break end
+        if keys[yTouch] then
+            dialGate(DESTINATIONS[keys[yTouch]])
+            break
+        end
+    end
+    overlayActive = false
+end
+
 -- ======= STARGATE CONTROL =======
 local function updateStatus()
     if interface.isStargateConnected() then
@@ -269,11 +293,14 @@ end
 -- ======= MAIN GUI LOOP =======
 local function guiLoop()
     while true do
-        updateStatus()
-        render()
+        if not overlayActive then
+            updateStatus()
+            render()
+        end
         os.sleep(0.5)
     end
 end
+
 
 -- ======= RUN ALL =======
 parallel.waitForAny(apiLoop,inputLoop,guiLoop)
