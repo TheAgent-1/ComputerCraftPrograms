@@ -141,15 +141,19 @@ local function StargateInstall() --Handles installing the Stargate program
     if choice == "1" then
         downloadFile(stargate_url, "GateDial.lua")
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
+        print("Run 'edit Stargate_Readme.txt' to view the Readme")
     elseif choice == "2" then
         downloadFile(stargate_auto_url, "GateDialAuto.lua")
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
+        print("Run 'edit Stargate_Readme.txt' to view the Readme")
     elseif choice == "3" then
         downloadFile(stargate_manual_url, "GateDialManual.lua")
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
+        print("Run 'edit Stargate_Readme.txt' to view the Readme")
     elseif choice == "4" then
         downloadFile(stargate_full_url, "GateDialFull.lua")
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
+        print("Run 'edit Stargate_Readme.txt' to view the Readme")
     else
         print("Invalid option. Exiting.")
     end
