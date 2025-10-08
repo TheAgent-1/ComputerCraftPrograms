@@ -713,9 +713,9 @@ local function renderMainScreen()
     
     drawText(1, 11, "Chevrons:", colors.cyan)
     for i = 1, 7 do
-        local symbol = state.chevrons[i] and "●" or "○"
+        local symbol = state.chevrons[i] and "[#]" or "[ ]"
         local color = state.chevrons[i] and colors.lime or colors.gray
-        drawText(12 + (i * 3), 11, symbol, color)
+        drawText(11 + (i * 4), 11, symbol, color)
     end
     
     -- Enhanced Iris Display
