@@ -189,26 +189,61 @@ end
 -- ============================================
 
 local function updateEnergy()
-    if hasMethod(interface, "getEnergy") then
-        state.energy = interface.getEnergy() or 0
-        
-        if hasMethod(interface, "getEnergyTarget") then
-            state.energyMax = interface.getEnergyTarget() or 1
-        elseif hasMethod(interface, "getMaxEnergy") then
-            state.energyMax = interface.getMaxEnergy() or 1
-        elseif hasMethod(interface, "getEnergyCapacity") then
-            state.energyMax = interface.getEnergyCapacity() or 1
-        else
-            state.energyMax = 1000000
-        end
-    else
-        state.energy = 0
-        state.energyMax = 1
+    state.energy = 0
+    state.energyMax = 1
+    
+    if not hasMethod(interface, "getEnergy") then
+        return
     end
     
-    -- Ensure no nil values
-    state.energy = state.energy or 0
-    state.energyMax = state.energyMax or 1
+    local currentEnergy = interface.getEnergy()
+    
+    if currentEnergy == nil then
+        return
+    end
+    
+    state.energy = currentEnergy
+    
+    -- Try to find max energy - try all possible methods
+    local maxEnergy = nil
+    
+    if hasMethod(interface, "getEnergyCapacity") then
+        maxEnergy = interface.getEnergyCapacity()
+        if CONFIG.DEBUG_MODE then
+            print("Energy method: getEnergyCapacity() = " .. tostring(maxEnergy))
+        end
+    end
+    
+    if maxEnergy == nil and hasMethod(interface, "getMaxEnergy") then
+        maxEnergy = interface.getMaxEnergy()
+        if CONFIG.DEBUG_MODE then
+            print("Energy method: getMaxEnergy() = " .. tostring(maxEnergy))
+        end
+    end
+    
+    if maxEnergy == nil and hasMethod(interface, "getEnergyTarget") then
+        maxEnergy = interface.getEnergyTarget()
+        if CONFIG.DEBUG_MODE then
+            print("Energy method: getEnergyTarget() = " .. tostring(maxEnergy))
+        end
+    end
+    
+    -- If we still don't have max, use a sensible default
+    if maxEnergy == nil or maxEnergy <= 0 then
+        maxEnergy = currentEnergy  -- Assume we're at full
+        if CONFIG.DEBUG_MODE then
+            print("Energy method: Using current as max")
+        end
+    end
+    
+    state.energyMax = maxEnergy
+    
+    -- Debug output
+    if CONFIG.DEBUG_MODE then
+        print("Current Energy: " .. state.energy)
+        print("Max Energy: " .. state.energyMax)
+        print("Percentage: " .. math.floor((state.energy / state.energyMax) * 100) .. "%")
+    end
 end
 
 local function updateGateStatus()
@@ -667,9 +702,13 @@ local function renderMainScreen()
         drawText(1, 7, "Address: " .. addrStr, colors.lightBlue)
     end
     
+    -- FIXED: Cap energy percentage at 100%
     drawText(1, 9, "Energy:", colors.orange)
     drawProgressBar(10, 9, 30, state.energy, state.energyMax)
+    
     local energyPct = math.floor((state.energy / state.energyMax) * 100)
+    energyPct = math.min(energyPct, 100)  -- CAP AT 100%
+    
     drawText(42, 9, energyPct .. "%", colors.orange)
     
     drawText(1, 11, "Chevrons:", colors.cyan)
@@ -705,7 +744,6 @@ local function renderMainScreen()
     drawButton(2, 15, "DIAL", colors.lime)
     drawButton(18, 15, "DISCONNECT", colors.red)
     
-    -- NEW: Separate Iris Buttons
     if state.hasIris then
         drawButton(35, 15, "IRIS OPEN", colors.green)
         drawButton(35, 16, "IRIS CLOSE", colors.red)
