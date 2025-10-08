@@ -358,7 +358,7 @@ local function dialCrystalInterface(address)
 end
 
 -- ============================================
--- DIALING SYSTEM - BASIC INTERFACE (FIXED!)
+-- DIALING SYSTEM - BASIC INTERFACE (IMPROVED!)
 -- ============================================
 
 local function dialBasicInterface(address)
@@ -467,14 +467,22 @@ local function dialBasicInterface(address)
                 return false
             end
             
-            -- STEP 3: Close chevron if method exists
-            if hasMethod(interface, "closeChevron") then
-                sleep(0.2)
-                local ok3, err3 = pcall(function()
-                    interface.closeChevron()
-                end)
-                if not ok3 then
-                    log("WARNING: closeChevron failed: " .. tostring(err3), colors.yellow)
+            sleep(0.2)
+            
+            -- STEP 3: Close chevron ONLY if it's still open
+            if hasMethod(interface, "isChevronOpen") and hasMethod(interface, "closeChevron") then
+                if interface.isChevronOpen() then
+                    log("Chevron still open - closing...", colors.gray)
+                    local ok3, err3 = pcall(function()
+                        interface.closeChevron()
+                    end)
+                    if not ok3 then
+                        log("WARNING: closeChevron failed: " .. tostring(err3), colors.yellow)
+                    else
+                        log("Chevron closed", colors.gray)
+                    end
+                else
+                    log("Chevron already closed (auto-closed by encode)", colors.gray)
                 end
             end
             
