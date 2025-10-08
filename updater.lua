@@ -28,7 +28,8 @@ local externalmailclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftProg
 local stargate_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDial.lua"
 local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialAuto.lua"
 local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
-local stargate_gpt_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/CGPTGateDial.lua"
+local stargate_full_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialFull.lua"
+local stargate_readme_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/ReadMe.txt"
 
 --Powerstation--
 local powerstationserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Server.lua"
@@ -133,18 +134,22 @@ local function StargateInstall() --Handles installing the Stargate program
     print("1 - GateDial")
     print("2 - GateDialAuto")
     print("3 - GateDialManual")
-    print("4 - ChatGPT's Attempt")
+    print("4 - GateDialFull")
     write("Select an option: ")
 
     local choice = read()
     if choice == "1" then
         downloadFile(stargate_url, "GateDial.lua")
+        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
     elseif choice == "2" then
         downloadFile(stargate_auto_url, "GateDialAuto.lua")
+        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
     elseif choice == "3" then
         downloadFile(stargate_manual_url, "GateDialManual.lua")
+        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
     elseif choice == "4" then
-        downloadFile(stargate_gpt_url, "CGPTGateDial.lua")
+        downloadFile(stargate_full_url, "GateDialFull.lua")
+        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
     else
         print("Invalid option. Exiting.")
     end
