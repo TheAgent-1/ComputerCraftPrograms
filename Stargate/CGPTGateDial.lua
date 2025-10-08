@@ -32,6 +32,7 @@ local state = {
     interfaceType = "Unknown",
     hasIris = false,
     irisClosed = false,
+    irisProgress = 0,  -- NEW
     status = "Initializing...",
     chevrons = {false, false, false, false, false, false, false, false, false},
     energy = 0,
@@ -759,22 +760,32 @@ end
 -- ============================================
 
 local function handleMainScreenClick(x, y)
+    -- Dial button
     if y == 15 and x >= 2 and x <= 15 then
         currentScreen = "destinations"
         render()
         return
     end
     
+    -- Disconnect button
     if y == 15 and x >= 18 and x <= 35 then
         disconnectGate()
         return
     end
     
-    if state.hasIris and y == 15 and x >= 38 and x <= 48 then
-        toggleIris()
+    -- Iris OPEN button
+    if state.hasIris and y == 15 and x >= 35 and x <= 50 then
+        openIris()
         return
     end
     
+    -- Iris CLOSE button
+    if state.hasIris and y == 16 and x >= 35 and x <= 50 then
+        closeIris()
+        return
+    end
+    
+    -- Refresh hardware button
     if y == 17 and x >= 2 and x <= 25 then
         log("Refreshing hardware...", colors.orange)
         selfCheck()
