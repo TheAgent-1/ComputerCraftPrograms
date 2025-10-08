@@ -127,21 +127,32 @@ local function detectGateType()
 end
 
 local function detectIris()
-    state.hasIris = hasMethod(interface, "closeIris") or 
-                    hasMethod(interface, "openIris") or
-                    hasMethod(interface, "getIris")
+    state.hasIris = hasMethod(interface, "getIrisProgress") or
+                    hasMethod(interface, "closeIris") or 
+                    hasMethod(interface, "openIris")
     
     if state.hasIris then
         log("Iris: DETECTED", colors.green)
         
-        if hasMethod(interface, "isIrisClosed") then
-            state.irisClosed = interface.isIrisClosed()
-        elseif hasMethod(interface, "getIris") then
-            local irisState = interface.getIris()
-            state.irisClosed = (irisState == "CLOSED")
+        -- Get initial iris state
+        if hasMethod(interface, "getIrisProgress") then
+            local progress = interface.getIrisProgress()
+            state.irisProgress = progress or 0
+            
+            if progress == 0 then
+                state.irisClosed = false
+                log("Iris state: OPEN", colors.green)
+            elseif progress == 58 then
+                state.irisClosed = true
+                log("Iris state: CLOSED", colors.red)
+            else
+                state.irisClosed = (progress > 29)
+                log("Iris state: MOVING (" .. progress .. "/58)", colors.yellow)
+            end
         end
     else
         log("Iris: NOT FOUND", colors.yellow)
+        state.irisProgress = 0
     end
 end
 
@@ -242,12 +253,18 @@ local function updateGateStatus()
         end
     end
     
-    if state.hasIris then
-        if hasMethod(interface, "isIrisClosed") then
-            state.irisClosed = interface.isIrisClosed()
-        elseif hasMethod(interface, "getIris") then
-            local irisState = interface.getIris()
-            state.irisClosed = (irisState == "CLOSED")
+    -- Update iris progress
+    if state.hasIris and hasMethod(interface, "getIrisProgress") then
+        local progress = interface.getIrisProgress()
+        state.irisProgress = progress or 0
+        
+        if progress == 0 then
+            state.irisClosed = false
+        elseif progress == 58 then
+            state.irisClosed = true
+        else
+            -- In motion - keep last known state but update progress
+            state.irisClosed = (progress > 29)
         end
     end
 end
@@ -256,22 +273,69 @@ end
 -- GATE CONTROL FUNCTIONS
 -- ============================================
 
-local function toggleIris()
+local function openIris()
     if not state.hasIris then
         log("No iris installed!", colors.red)
         return
     end
     
-    if state.irisClosed then
-        if hasMethod(interface, "openIris") then
+    local currentProgress = state.irisProgress or 0
+    
+    if currentProgress == 0 then
+        log("Iris already fully open", colors.yellow)
+        return
+    elseif currentProgress > 0 and currentProgress < 58 then
+        log("Iris currently moving (progress: " .. currentProgress .. "/58)", colors.orange)
+        log("Opening iris...", colors.green)
+    else
+        log("Opening iris from closed position...", colors.green)
+    end
+    
+    if hasMethod(interface, "openIris") then
+        local ok, err = pcall(function()
             interface.openIris()
-            log("IRIS OPENING", colors.green)
+        end)
+        
+        if ok then
+            log("IRIS OPENING", colors.lime)
+        else
+            log("ERROR opening iris: " .. tostring(err), colors.red)
         end
     else
-        if hasMethod(interface, "closeIris") then
+        log("ERROR: No openIris method", colors.red)
+    end
+end
+
+local function closeIris()
+    if not state.hasIris then
+        log("No iris installed!", colors.red)
+        return
+    end
+    
+    local currentProgress = state.irisProgress or 0
+    
+    if currentProgress == 58 then
+        log("Iris already fully closed", colors.yellow)
+        return
+    elseif currentProgress > 0 and currentProgress < 58 then
+        log("Iris currently moving (progress: " .. currentProgress .. "/58)", colors.orange)
+        log("Closing iris...", colors.red)
+    else
+        log("Closing iris from open position...", colors.red)
+    end
+    
+    if hasMethod(interface, "closeIris") then
+        local ok, err = pcall(function()
             interface.closeIris()
+        end)
+        
+        if ok then
             log("IRIS CLOSING", colors.red)
+        else
+            log("ERROR closing iris: " .. tostring(err), colors.red)
         end
+    else
+        log("ERROR: No closeIris method", colors.red)
     end
 end
 
@@ -614,19 +678,38 @@ local function renderMainScreen()
         drawText(12 + (i * 3), 11, symbol, color)
     end
     
+    -- Enhanced Iris Display
     if state.hasIris then
-        local irisText = state.irisClosed and "CLOSED" or "OPEN"
-        local irisColor = state.irisClosed and colors.red or colors.green
+        local irisProgress = state.irisProgress or 0
+        local irisText = ""
+        local irisColor = colors.gray
+        
+        if irisProgress == 0 then
+            irisText = "OPEN"
+            irisColor = colors.green
+        elseif irisProgress == 58 then
+            irisText = "CLOSED"
+            irisColor = colors.red
+        else
+            irisText = "MOVING (" .. irisProgress .. "/58)"
+            irisColor = colors.yellow
+        end
+        
         drawText(1, 13, "Iris: " .. irisText, irisColor)
     else
         drawText(1, 13, "Iris: N/A", colors.gray)
     end
     
+    -- Control Buttons
     drawButton(2, 15, "DIAL", colors.lime)
     drawButton(18, 15, "DISCONNECT", colors.red)
+    
+    -- NEW: Separate Iris Buttons
     if state.hasIris then
-        drawButton(38, 15, "IRIS", colors.cyan)
+        drawButton(35, 15, "IRIS OPEN", colors.green)
+        drawButton(35, 16, "IRIS CLOSE", colors.red)
     end
+    
     drawButton(2, 17, "REFRESH HARDWARE", colors.orange)
     
     drawText(1, 19, "EVENT LOG:", colors.white)
@@ -796,6 +879,16 @@ local function main()
     print("===================================")
     print("  STARGATE DIALING COMPUTER v5.0")
     print("===================================")
+    print("")
+    print("If you've swapped gates:")
+    print("1. Shut down computer")
+    print("2. Break & replace interface")
+    print("3. Reconnect network cables")
+    print("4. Toggle modems on")
+    print("5. Restart computer")
+    print("")
+    print("Press any key to continue...")
+    os.pullEvent("key")
     
     selfCheck()
     render()
