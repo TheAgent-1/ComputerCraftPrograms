@@ -896,6 +896,7 @@ local function apiLoop()
     print("[API] Listening for: " .. CONFIG.STARGATE_NAME)
     
     local pollCount = 0
+    local lastExecutedCommand = nil  -- NEW: Track last command
     
     while true do
         pollCount = pollCount + 1
@@ -904,7 +905,6 @@ local function apiLoop()
             print("[API] Poll #" .. pollCount)
         end
         
-        -- FIX: Just pass URL, no timeout parameter
         local ok, response = pcall(http.get, CONFIG.API_URL)
         
         if ok and response then
@@ -921,31 +921,42 @@ local function apiLoop()
                 print("[API] To: " .. tostring(data.to))
                 
                 if data.from == CONFIG.STARGATE_NAME then
-                    print("[API] ✓ Command is for THIS gate!")
+                    -- NEW: Create a unique signature for this command
+                    local commandSignature = data.action .. "|" .. (data.to or "")
                     
-                    if data.action == "open" and data.to then
-                        local address = DESTINATIONS[data.to]
-                        if address then
-                            log("API: Dialing " .. data.to, colors.cyan)
-                            dialAddress(address)
-                        else
-                            log("API: Unknown gate '" .. data.to .. "'", colors.red)
-                        end
+                    if commandSignature == lastExecutedCommand then
+                        print("[API] (Same command as before, skipping)")
+                    else
+                        print("[API] ✓ New command detected!")
                         
-                    elseif data.action == "close" then
-                        log("API: Disconnect", colors.orange)
-                        disconnectGate()
-                        
-                    elseif data.action == "iris-open" and state.hasIris then
-                        log("API: Open iris", colors.green)
-                        if state.irisClosed then
-                            toggleIris()
-                        end
-                        
-                    elseif data.action == "iris-close" and state.hasIris then
-                        log("API: Close iris", colors.red)
-                        if not state.irisClosed then
-                            toggleIris()
+                        if data.action == "open" and data.to then
+                            local address = DESTINATIONS[data.to]
+                            if address then
+                                log("API: Dialing " .. data.to, colors.cyan)
+                                dialAddress(address)
+                                lastExecutedCommand = commandSignature
+                            else
+                                log("API: Unknown gate '" .. data.to .. "'", colors.red)
+                            end
+                            
+                        elseif data.action == "close" then
+                            log("API: Disconnect", colors.orange)
+                            disconnectGate()
+                            lastExecutedCommand = commandSignature
+                            
+                        elseif data.action == "iris-open" and state.hasIris then
+                            log("API: Open iris", colors.green)
+                            if state.irisClosed then
+                                toggleIris()
+                                lastExecutedCommand = commandSignature
+                            end
+                            
+                        elseif data.action == "iris-close" and state.hasIris then
+                            log("API: Close iris", colors.red)
+                            if not state.irisClosed then
+                                toggleIris()
+                                lastExecutedCommand = commandSignature
+                            end
                         end
                     end
                 else
@@ -953,6 +964,8 @@ local function apiLoop()
                 end
             else
                 print("[API] No action or empty response")
+                -- NEW: Clear last command if API returns nothing
+                lastExecutedCommand = nil
             end
         else
             print("[API] Request failed: " .. tostring(response))
