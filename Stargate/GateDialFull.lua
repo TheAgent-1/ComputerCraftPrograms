@@ -885,35 +885,81 @@ end
 
 local function apiLoop()
     if not CONFIG.API_ENABLED then
+        print("[API] API polling is DISABLED")
         while true do 
             os.sleep(3600) 
         end
     end
     
+    print("[API] Starting API polling loop...")
+    print("[API] Target: " .. CONFIG.API_URL)
+    print("[API] Listening for: " .. CONFIG.STARGATE_NAME)
+    
+    local pollCount = 0
+    
     while true do
+        pollCount = pollCount + 1
+        
+        -- Print every 10 polls so it doesn't spam too much
+        if pollCount % 10 == 1 then
+            print("[API] Poll #" .. pollCount .. " - checking for commands...")
+        end
+        
         local ok, response = pcall(http.get, CONFIG.API_URL, nil, {timeout = 2})
         
         if ok and response then
             local body = response.readAll()
             response.close()
             
-            local data = textutils.unserializeJSON(body)
+            print("[API] Response: " .. body)
             
-            if data and data.action then
-                if data.action == "open" and data.address then
-                    dialAddress(data.address)
-                elseif data.action == "disconnect" then
-                    disconnectGate()
-                elseif data.action == "iris_open" and state.hasIris then
-                    if state.irisClosed then 
-                        toggleIris() 
+            local parseOk, data = pcall(textutils.unserializeJSON, body)
+            
+            if not parseOk then
+                print("[API] ERROR: Failed to parse JSON")
+                print("[API] Raw body: " .. body)
+            elseif data and data.action then
+                print("[API] Parsed action: " .. data.action)
+                print("[API] From: " .. tostring(data.from))
+                print("[API] To: " .. tostring(data.to))
+                
+                if data.from == CONFIG.STARGATE_NAME then
+                    print("[API] YES Command is for THIS gate!")
+                    
+                    if data.action == "open" and data.to then
+                        local address = DESTINATIONS[data.to]
+                        if address then
+                            log("API: Dialing " .. data.to, colors.cyan)
+                            dialAddress(address)
+                        else
+                            log("API: Unknown gate '" .. data.to .. "'", colors.red)
+                        end
+                        
+                    elseif data.action == "close" then
+                        log("API: Disconnect command", colors.orange)
+                        disconnectGate()
+                        
+                    elseif data.action == "iris-open" and state.hasIris then
+                        log("API: Open iris", colors.green)
+                        if state.irisClosed then 
+                            toggleIris() 
+                        end
+                        
+                    elseif data.action == "iris-close" and state.hasIris then
+                        log("API: Close iris", colors.red)
+                        if not state.irisClosed then 
+                            toggleIris() 
+                        end
                     end
-                elseif data.action == "iris_close" and state.hasIris then
-                    if not state.irisClosed then 
-                        toggleIris() 
-                    end
+                else
+                    print("[API] NO Command for '" .. tostring(data.from) .. "', not me")
                 end
+            else
+                print("[API] No action in response (may be empty/idle)")
             end
+        else
+            print("[API] ERROR: HTTP request failed")
+            print("[API] Error: " .. tostring(response))
         end
         
         os.sleep(1)
