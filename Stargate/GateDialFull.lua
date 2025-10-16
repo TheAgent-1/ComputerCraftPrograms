@@ -900,7 +900,7 @@ local function apiLoop()
             local data = textutils.unserializeJSON(body)
             
             if data and data.action then
-                if data.action == "dial" and data.address then
+                if data.action == "open" and data.address then
                     dialAddress(data.address)
                 elseif data.action == "disconnect" then
                     disconnectGate()
