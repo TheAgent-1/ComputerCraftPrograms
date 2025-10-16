@@ -900,12 +900,12 @@ local function apiLoop()
     while true do
         pollCount = pollCount + 1
         
-        -- Print every 10 polls so it doesn't spam too much
         if pollCount % 10 == 1 then
-            print("[API] Poll #" .. pollCount .. " - checking for commands...")
+            print("[API] Poll #" .. pollCount)
         end
         
-        local ok, response = pcall(http.get, CONFIG.API_URL, nil, {timeout = 2})
+        -- FIX: Just pass URL, no timeout parameter
+        local ok, response = pcall(http.get, CONFIG.API_URL)
         
         if ok and response then
             local body = response.readAll()
@@ -913,18 +913,15 @@ local function apiLoop()
             
             print("[API] Response: " .. body)
             
-            local parseOk, data = pcall(textutils.unserializeJSON, body)
+            local data = textutils.unserializeJSON(body)
             
-            if not parseOk then
-                print("[API] ERROR: Failed to parse JSON")
-                print("[API] Raw body: " .. body)
-            elseif data and data.action then
-                print("[API] Parsed action: " .. data.action)
+            if data and type(data) == "table" and data.action then
+                print("[API] Action: " .. data.action)
                 print("[API] From: " .. tostring(data.from))
                 print("[API] To: " .. tostring(data.to))
                 
                 if data.from == CONFIG.STARGATE_NAME then
-                    print("[API] YES Command is for THIS gate!")
+                    print("[API] ✓ Command is for THIS gate!")
                     
                     if data.action == "open" and data.to then
                         local address = DESTINATIONS[data.to]
@@ -936,30 +933,29 @@ local function apiLoop()
                         end
                         
                     elseif data.action == "close" then
-                        log("API: Disconnect command", colors.orange)
+                        log("API: Disconnect", colors.orange)
                         disconnectGate()
                         
                     elseif data.action == "iris-open" and state.hasIris then
                         log("API: Open iris", colors.green)
-                        if state.irisClosed then 
-                            toggleIris() 
+                        if state.irisClosed then
+                            toggleIris()
                         end
                         
                     elseif data.action == "iris-close" and state.hasIris then
                         log("API: Close iris", colors.red)
-                        if not state.irisClosed then 
-                            toggleIris() 
+                        if not state.irisClosed then
+                            toggleIris()
                         end
                     end
                 else
-                    print("[API] NO Command for '" .. tostring(data.from) .. "', not me")
+                    print("[API] Command for: " .. tostring(data.from))
                 end
             else
-                print("[API] No action in response (may be empty/idle)")
+                print("[API] No action or empty response")
             end
         else
-            print("[API] ERROR: HTTP request failed")
-            print("[API] Error: " .. tostring(response))
+            print("[API] Request failed: " .. tostring(response))
         end
         
         os.sleep(1)
