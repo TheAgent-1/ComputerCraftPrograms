@@ -29,11 +29,14 @@ local stargate_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/b
 local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialAuto.lua"
 local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
 local stargate_full_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialFull.lua"
+local stargate_remotedhd_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/RemoteDHD.lua"
 local stargate_readme_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/ReadMe.txt"
 
 --Powerstation--
 local powerstationserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Server.lua"
 local powerstationclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Client.lua"
+local ps_server_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/PS_Server_test.lua"
+local ps_client_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/PS_Client_test.lua"
 
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
@@ -135,6 +138,7 @@ local function StargateInstall() --Handles installing the Stargate program
     print("2 - GateDialAuto")
     print("3 - GateDialManual")
     print("4 - GateDialFull")
+    print("5 - RemoteDHD")
     write("Select an option: ")
 
     local choice = read()
@@ -154,6 +158,10 @@ local function StargateInstall() --Handles installing the Stargate program
         downloadFile(stargate_full_url, "GateDialFull.lua")
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
         print("Run 'edit Stargate_Readme.txt' to view the Readme")
+    elseif choice == "5" then
+        downloadFile(stargate_remotedhd_url, "RemoteDHD.lua")
+        --downloadFile(stargate_readme_url, "Stargate_Readme.txt")
+        --print("Run 'edit Stargate_Readme.txt' to view the Readme")
     else
         print("Invalid option. Exiting.")
     end
@@ -165,6 +173,8 @@ local function PowerstationInstall() --Handles installing the Powerstation progr
     print("Please select the Powerstation program to install:")
     print("1 - Powerstation Server")
     print("2 - Powerstation Client")
+    print("3 - Powerstation Server - Test Branch")
+    print("4 - Powerstation Client - Test Branch")
     write("Select an option: ")
 
     local choice = read()
@@ -172,6 +182,10 @@ local function PowerstationInstall() --Handles installing the Powerstation progr
         downloadFile(powerstationserver_url, "Powerstation_Server.lua")
     elseif choice == "2" then
         downloadFile(powerstationclient_url, "Powerstation_Client.lua")
+    elseif choice == "3" then
+        downloadFile(ps_server_url, "PS_Server_test.lua")
+    elseif choice == "4" then
+        downloadFile(ps_client_url, "PS_Client_test.lua")
     else
         print("Invalid option. Exiting.")
     end
