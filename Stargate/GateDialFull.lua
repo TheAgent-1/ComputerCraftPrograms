@@ -885,50 +885,74 @@ end
 
 local function apiLoop()
     if not CONFIG.API_ENABLED then
-        print("[API] API polling is DISABLED")
+        if CONFIG.DEBUG_MODE then
+            print("[API] API polling is DISABLED")
+        end
         while true do 
             os.sleep(3600) 
         end
     end
     
-    print("[API] Starting API polling loop...")
-    print("[API] Target: " .. CONFIG.API_URL)
-    print("[API] Listening for: " .. CONFIG.STARGATE_NAME)
+    if CONFIG.DEBUG_MODE then
+        print("[API] Starting API polling loop...")
+        print("[API] Target: " .. CONFIG.API_URL)
+        print("[API] Listening for: " .. CONFIG.STARGATE_NAME)
+    end
     
     local pollCount = 0
-    local lastExecutedCommand = nil  -- NEW: Track last command
+    local lastExecutedCommand = nil
     
     while true do
         pollCount = pollCount + 1
         
-        if pollCount % 10 == 1 then
+        -- Debug: Print every 10 polls to reduce spam
+        if CONFIG.DEBUG_MODE and pollCount % 10 == 1 then
             print("[API] Poll #" .. pollCount)
         end
         
+        -- Make HTTP GET request
         local ok, response = pcall(http.get, CONFIG.API_URL)
         
         if ok and response then
             local body = response.readAll()
             response.close()
             
-            print("[API] Response: " .. body)
+            -- Debug: Show response
+            if CONFIG.DEBUG_MODE and pollCount % 10 == 1 then
+                print("[API] Response: " .. body)
+            end
             
-            local data = textutils.unserializeJSON(body)
+            -- Parse JSON
+            local parseOk, data = pcall(textutils.unserializeJSON, body)
             
-            if data and type(data) == "table" and data.action then
-                print("[API] Action: " .. data.action)
-                print("[API] From: " .. tostring(data.from))
-                print("[API] To: " .. tostring(data.to))
+            if not parseOk then
+                -- Always show parse errors (critical)
+                print("[API] ERROR: Failed to parse JSON")
+                print("[API] Raw body: " .. body)
+            elseif data and type(data) == "table" and data.action then
+                -- Valid command received
+                if CONFIG.DEBUG_MODE then
+                    print("[API] Action: " .. data.action)
+                    print("[API] From: " .. tostring(data.from))
+                    print("[API] To: " .. tostring(data.to))
+                end
                 
+                -- Check if command is for this gate
                 if data.from == CONFIG.STARGATE_NAME then
-                    -- NEW: Create a unique signature for this command
+                    -- Create unique signature for this command
                     local commandSignature = data.action .. "|" .. (data.to or "")
                     
+                    -- Check if we already executed this exact command
                     if commandSignature == lastExecutedCommand then
-                        print("[API] (Same command as before, skipping)")
+                        if CONFIG.DEBUG_MODE and pollCount % 10 == 1 then
+                            print("[API] (Same command as before, skipping)")
+                        end
                     else
-                        print("[API] ✓ New command detected!")
+                        if CONFIG.DEBUG_MODE then
+                            print("[API] ✓ New command detected!")
+                        end
                         
+                        -- DIAL command
                         if data.action == "open" and data.to then
                             local address = DESTINATIONS[data.to]
                             if address then
@@ -936,41 +960,69 @@ local function apiLoop()
                                 dialAddress(address)
                                 lastExecutedCommand = commandSignature
                             else
-                                log("API: Unknown gate '" .. data.to .. "'", colors.red)
+                                log("API: Unknown destination '" .. data.to .. "'", colors.red)
+                                if CONFIG.DEBUG_MODE then
+                                    print("[API] Available destinations:")
+                                    for name, addr in pairs(DESTINATIONS) do
+                                        print("  - " .. name)
+                                    end
+                                end
                             end
-                            
+                        
+                        -- DISCONNECT command
                         elseif data.action == "close" then
-                            log("API: Disconnect", colors.orange)
+                            log("API: Disconnect command", colors.orange)
                             disconnectGate()
                             lastExecutedCommand = commandSignature
-                            
-                        elseif data.action == "iris-open" and state.hasIris then
-                            log("API: Open iris", colors.green)
-                            if state.irisClosed then
-                                toggleIris()
+                        
+                        -- IRIS OPEN command
+                        elseif data.action == "iris-open" then
+                            if state.hasIris then
+                                log("API: Open iris command", colors.green)
+                                openIris()
                                 lastExecutedCommand = commandSignature
+                            else
+                                log("API: No iris installed", colors.yellow)
                             end
-                            
-                        elseif data.action == "iris-close" and state.hasIris then
-                            log("API: Close iris", colors.red)
-                            if not state.irisClosed then
-                                toggleIris()
+                        
+                        -- IRIS CLOSE command
+                        elseif data.action == "iris-close" then
+                            if state.hasIris then
+                                log("API: Close iris command", colors.red)
+                                closeIris()
                                 lastExecutedCommand = commandSignature
+                            else
+                                log("API: No iris installed", colors.yellow)
+                            end
+                        
+                        -- Unknown action
+                        else
+                            if CONFIG.DEBUG_MODE then
+                                print("[API] Unknown action: " .. data.action)
                             end
                         end
                     end
                 else
-                    print("[API] Command for: " .. tostring(data.from))
+                    -- Command is for a different gate
+                    if CONFIG.DEBUG_MODE and pollCount % 10 == 1 then
+                        print("[API] Command for '" .. tostring(data.from) .. "', not for me")
+                    end
                 end
             else
-                print("[API] No action or empty response")
-                -- NEW: Clear last command if API returns nothing
+                -- No action in response (API is idle/empty)
+                if CONFIG.DEBUG_MODE and pollCount % 10 == 1 then
+                    print("[API] No action in response")
+                end
+                -- Clear last command so we're ready for next one
                 lastExecutedCommand = nil
             end
         else
-            print("[API] Request failed: " .. tostring(response))
+            -- HTTP request failed - Always show (critical error)
+            print("[API] ERROR: HTTP request failed")
+            print("[API] Error: " .. tostring(response))
         end
         
+        -- Wait 1 second before next poll
         os.sleep(1)
     end
 end
