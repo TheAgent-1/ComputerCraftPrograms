@@ -164,7 +164,7 @@ local function renderGateSelector()
     local displayCount = 0
     
     for i, gate in ipairs(GATE_NETWORK) do
-        if displayCount < 10 then  -- Limit to first 10 for screen space
+        if displayCount < 10 then
             local color = colors.lightGray
             if state.selectedGate == gate then
                 color = colors.lime
@@ -177,7 +177,7 @@ local function renderGateSelector()
     end
     
     drawText(1, 19, "[ENTER] Continue", colors.gray)
-    drawText(1, 20, "[ESC] Logout", colors.gray)
+    drawText(1, 20, "[`] Logout", colors.gray)  -- BACKTICK KEY
 end
 
 local function handleGateSelector()
@@ -187,6 +187,13 @@ local function handleGateSelector()
         local event, param = os.pullEvent()
         
         if event == "char" then
+            if param == "`" then  -- BACKTICK to logout
+                state.currentScreen = "login"
+                state.loggedIn = false
+                state.selectedGate = nil
+                return
+            end
+            
             local num = tonumber(param)
             if num and num >= 1 and num <= #GATE_NETWORK then
                 state.selectedGate = GATE_NETWORK[num]
@@ -195,10 +202,6 @@ local function handleGateSelector()
         elseif event == "key" then
             if param == keys.enter and state.selectedGate then
                 state.currentScreen = "main"
-                return
-            elseif param == keys.backspace or param == keys.delete then
-                state.currentScreen = "login"
-                state.loggedIn = false
                 return
             end
         end
