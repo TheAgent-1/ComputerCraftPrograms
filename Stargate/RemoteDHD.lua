@@ -347,11 +347,13 @@ local function handleDestSelector()
                 state.selectedDest = nil
                 state.availableDests = nil
                 state.currentScreen = "main"
+                local ok, msg = sendCommand("null", "", "")  -- Dummy to reset state
                 return
             elseif param == keys.backspace or param == keys.delete then
                 state.selectedDest = nil
                 state.availableDests = nil
                 state.currentScreen = "main"
+                local ok, msg = sendCommand("null", "", "")  -- Dummy to reset state
                 return
             end
         end
