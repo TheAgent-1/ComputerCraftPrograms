@@ -679,11 +679,11 @@ local function renderMainScreen()
     drawText(1, 1, "STARGATE COMMAND - DIALING COMPUTER", colors.white)
     drawText(1, 2, string.rep("=", 50), colors.gray)
     
-    -- Gate info on separate lines (CHANGED)
+    -- Gate info on separate lines
     drawText(1, 4, "Gate: " .. state.gateType, colors.cyan)
     drawText(1, 5, "Interface: " .. state.interfaceType, colors.cyan)
     
-    -- Status (shifted down)
+    -- Status
     local statusColor = colors.yellow
     if state.status == "CONNECTED" then
         statusColor = colors.green
@@ -695,7 +695,7 @@ local function renderMainScreen()
     
     drawText(1, 7, "STATUS: " .. state.status, statusColor)
     
-    -- Connected Address (shifted down)
+    -- Connected Address
     if state.connectedAddress then
         local addrStr = "Unknown"
         if type(state.connectedAddress) == "table" then
@@ -706,22 +706,22 @@ local function renderMainScreen()
         drawText(1, 8, "Address: " .. addrStr, colors.lightBlue)
     end
     
-    -- Energy Bar (shifted down)
-    drawText(1, 10, "Energy:", colors.orange)
-    drawProgressBar(10, 10, 30, state.energy, state.energyMax)
+    -- Energy Bar (moved up to line 9)
+    drawText(1, 9, "Energy:", colors.orange)
+    drawProgressBar(10, 9, 30, state.energy, state.energyMax)
     local energyPct = math.floor((state.energy / state.energyMax) * 100)
     energyPct = math.min(energyPct, 100)
-    drawText(42, 10, energyPct .. "%", colors.orange)
+    drawText(42, 9, energyPct .. "%", colors.orange)
     
-    -- Chevron Indicators (shifted down)
-    drawText(1, 12, "Chevrons:", colors.cyan)
+    -- Chevron Indicators (moved up to line 11)
+    drawText(1, 11, "Chevrons:", colors.cyan)
     for i = 1, 7 do
         local symbol = state.chevrons[i] and "<#>" or "< >"
         local color = state.chevrons[i] and colors.lime or colors.gray
-        drawText(11 + (i * 4), 12, symbol, color)
+        drawText(11 + (i * 4), 11, symbol, color)
     end
     
-    -- Iris Status (shifted down)
+    -- Iris Status (moved up to line 13)
     if state.hasIris then
         local irisProgress = state.irisProgress or 0
         local irisText = ""
@@ -738,25 +738,25 @@ local function renderMainScreen()
             irisColor = colors.yellow
         end
         
-        drawText(1, 14, "Iris: " .. irisText, irisColor)
+        drawText(1, 13, "Iris: " .. irisText, irisColor)
     else
-        drawText(1, 14, "Iris: N/A", colors.gray)
+        drawText(1, 13, "Iris: N/A", colors.gray)
     end
     
-    -- Control Buttons (shifted down)
-    drawButton(2, 16, "DIAL", colors.lime)
-    drawButton(18, 16, "DISCONNECT", colors.red)
+    -- Control Buttons (moved up to line 15)
+    drawButton(2, 15, "DIAL", colors.lime)
+    drawButton(18, 15, "DISCONNECT", colors.red)
     
     if state.hasIris then
-        drawButton(35, 16, "IRIS OPEN", colors.green)
-        drawButton(35, 17, "IRIS CLOSE", colors.red)
+        drawButton(35, 15, "IRIS OPEN", colors.green)
+        drawButton(35, 16, "IRIS CLOSE", colors.red)
     end
     
-    drawButton(2, 18, "REFRESH HARDWARE", colors.orange)
+    drawButton(2, 17, "REFRESH HARDWARE", colors.orange)
     
-    -- Event Log (shifted down)
-    drawText(1, 20, "EVENT LOG:", colors.white)
-    drawText(1, 21, string.rep("-", 50), colors.gray)
+    -- Event Log (moved up to line 19)
+    drawText(1, 19, "EVENT LOG:", colors.white)
+    drawText(1, 20, string.rep("-", 50), colors.gray)
     
     for i, entry in ipairs(eventLog) do
         if i <= 6 then
@@ -764,7 +764,7 @@ local function renderMainScreen()
             if #logText > 48 then
                 logText = logText:sub(1, 45) .. "..."
             end
-            drawText(2, 21 + i, logText, entry.color)
+            drawText(2, 20 + i, logText, entry.color)
         end
     end
 end
@@ -802,32 +802,32 @@ end
 -- ============================================
 
 local function handleMainScreenClick(x, y)
-    -- Dial button
+    -- Dial button (row 15)
     if y == 15 and x >= 2 and x <= 15 then
         currentScreen = "destinations"
         render()
         return
     end
     
-    -- Disconnect button
+    -- Disconnect button (row 15)
     if y == 15 and x >= 18 and x <= 35 then
         disconnectGate()
         return
     end
     
-    -- Iris OPEN button
+    -- Iris OPEN button (row 15)
     if state.hasIris and y == 15 and x >= 35 and x <= 50 then
         openIris()
         return
     end
     
-    -- Iris CLOSE button
+    -- Iris CLOSE button (row 16)
     if state.hasIris and y == 16 and x >= 35 and x <= 50 then
         closeIris()
         return
     end
     
-    -- Refresh hardware button
+    -- Refresh hardware button (row 17)
     if y == 17 and x >= 2 and x <= 25 then
         log("Refreshing hardware...", colors.orange)
         selfCheck()
