@@ -9,21 +9,15 @@
 -- CONFIGURATION
 -- ============================================
 local CONFIG = {
-    API_URL = "http://192.168.1.41:5005/sg-command",
+    API_COMMAND_URL = "http://192.168.1.41:5005/sg-command",
+    API_STATUS_URL = "http://192.168.1.41:5005/sg-status/api",  -- NEW!
     LOGIN_CODE = "1234",  -- Change this!
     DEVICE_NAME = "Remote DHD"
 }
 
--- ALL gates in your network (single list!)
-local GATE_NETWORK = {
-    "Earth",
-    "Abydos", 
-    "Chulak",
-    "Atlantis",
-    "P3X-984",
-    "Tollana",
-    "Langara"
-}
+-- Gate network - populated from API
+local GATE_NETWORK = {}
+local lastNetworkUpdate = 0
 
 -- ============================================
 -- STATE
@@ -79,6 +73,54 @@ local function showMessage(msg, color, duration)
 end
 
 -- ============================================
+-- GATE NETWORK FETCHING
+-- ============================================
+
+local function fetchGateNetwork()
+    clearScreen()
+    drawText(1, 8, "Scanning gate network...", colors.yellow)
+    
+    local ok, response = pcall(http.get, CONFIG.API_STATUS_URL)
+    
+    if ok and response then
+        local body = response.readAll()
+        response.close()
+        
+        local parseOk, gateList = pcall(textutils.unserializeJSON, body)
+        
+        if parseOk and gateList and type(gateList) == "table" then
+            -- Clear old network
+            GATE_NETWORK = {}
+            
+            -- Extract gate names
+            for _, gateData in ipairs(gateList) do
+                if gateData.gate then
+                    table.insert(GATE_NETWORK, gateData.gate)
+                end
+            end
+            
+            -- Sort alphabetically
+            table.sort(GATE_NETWORK)
+            
+            lastNetworkUpdate = os.clock()
+            
+            drawText(1, 9, "Found " .. #GATE_NETWORK .. " gates", colors.lime)
+            sleep(1)
+            return true
+        else
+            drawText(1, 9, "Failed to parse network", colors.red)
+            sleep(2)
+            return false
+        end
+    else
+        drawText(1, 9, "Cannot reach API", colors.red)
+        drawText(1, 10, "Using offline mode", colors.yellow)
+        sleep(2)
+        return false
+    end
+end
+
+-- ============================================
 -- API COMMUNICATION
 -- ============================================
 
@@ -96,7 +138,7 @@ local function sendCommand(action, from, to)
     
     local success, response = pcall(function()
         return http.post(
-            CONFIG.API_URL,
+            CONFIG.API_COMMAND_URL,  -- CHANGED!
             jsonData,
             {["Content-Type"] = "application/json"}
         )
@@ -138,8 +180,12 @@ local function handleLogin()
     
     if input == CONFIG.LOGIN_CODE then
         state.loggedIn = true
-        state.currentScreen = "selectGate"
         showMessage("Access Granted", colors.lime, 1)
+        
+        -- Fetch gate network after successful login
+        fetchGateNetwork()
+        
+        state.currentScreen = "selectGate"
         return true
     else
         showMessage("Access Denied!", colors.red, 2)
@@ -160,6 +206,14 @@ local function renderGateSelector()
     
     drawText(1, 5, "Which gate to control?", colors.white)
     
+     -- Check if network is empty
+    if #GATE_NETWORK == 0 then
+        drawText(1, 7, "No gates detected", colors.red)
+        drawText(1, 8, "Press R to refresh", colors.yellow)
+        drawText(1, 20, "[`] Logout", colors.gray)
+        return
+    end
+
     local y = 7
     local displayCount = 0
     
@@ -176,12 +230,18 @@ local function renderGateSelector()
         end
     end
     
-    drawText(1, 19, "[ENTER] Continue", colors.gray)
-    drawText(1, 20, "[`] Logout", colors.gray)  -- BACKTICK KEY
+    drawText(1, 18, "[ENTER] Continue", colors.gray)
+    drawText(1, 19, "[R] Refresh Network", colors.gray)
+    drawText(1, 20, "[`] Logout", colors.gray)
 end
 
 local function handleGateSelector()
     while state.currentScreen == "selectGate" do
+        -- Auto-refresh every 60 seconds
+        if os.clock() - lastNetworkUpdate > 60 then
+            fetchGateNetwork()
+        end
+        
         renderGateSelector()
         
         local event, param = os.pullEvent()
@@ -192,6 +252,8 @@ local function handleGateSelector()
                 state.loggedIn = false
                 state.selectedGate = nil
                 return
+            elseif param == "r" or param == "R" then  -- Refresh network
+                fetchGateNetwork()
             end
             
             local num = tonumber(param)

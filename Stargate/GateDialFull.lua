@@ -9,17 +9,16 @@
 -- CONFIGURATION
 -- ============================================
 local CONFIG = {
-    STARGATE_NAME = "Earth",
-    API_URL = "http://192.168.1.41:5005/sg-command",
+    STARGATE_NAME = "Earth",  -- Name of this Stargate
+    STARGATE_ADDRESS = {1, 2, 3, 4, 5, 6, 0},  -- Address of this Stargate
+    API_URL = "http://192.168.1.41:5005/sg-command/api",
+    API_STATUS_URL = "http://192.168.1.41:5005/sg-status/api",
     API_ENABLED = true,
     DEBUG_MODE = true
 }
 
-local DESTINATIONS = {
-    ["Abydos"] = {26, 6, 14, 31, 11, 29, 0},
-    ["Chulak"] = {8, 1, 22, 14, 36, 19, 0},
-    ["P3X-984"] = {2, 31, 20, 13, 25, 1, 0}
-}
+local DESTINATIONS = {}  -- Will be populated from API
+local lastDestinationUpdate = 0  -- Track when we last fetched destinations
 
 -- ============================================
 -- GLOBALS & STATE
@@ -72,6 +71,171 @@ local function hasMethod(obj, methodName)
         return false 
     end
     return type(obj[methodName]) == "function"
+end
+
+-- ============================================
+-- API STATUS REPORTING
+-- ============================================
+
+local function reportStatusToAPI()
+    if not CONFIG.API_ENABLED then 
+        return 
+    end
+    
+    -- This gate's OWN address (always reported)
+    local ownAddressStr = ""
+    if CONFIG.STARGATE_ADDRESS and type(CONFIG.STARGATE_ADDRESS) == "table" then
+        ownAddressStr = table.concat(CONFIG.STARGATE_ADDRESS, ",")
+    end
+    
+    -- What we're DIALING or CONNECTED TO
+    local dialedAddressStr = ""
+    
+    if state.dialing and state.currentDialingAddress then
+        -- We're dialing - report destination
+        if type(state.currentDialingAddress) == "table" then
+            dialedAddressStr = table.concat(state.currentDialingAddress, ",")
+        end
+        
+    elseif state.status == "CONNECTED" and state.connectedAddress then
+        -- We're connected - report who we're connected to
+        if type(state.connectedAddress) == "table" then
+            dialedAddressStr = table.concat(state.connectedAddress, ",")
+        elseif type(state.connectedAddress) == "string" then
+            dialedAddressStr = state.connectedAddress
+        end
+    end
+    
+    -- Determine status string for API
+    local apiStatus = "idle"
+    if state.status == "CONNECTED" then
+        apiStatus = "connected"
+    elseif state.status == "DIALING..." then
+        apiStatus = "dialing"
+    elseif state.status == "INCOMING WORMHOLE" then
+        apiStatus = "incoming"
+    else
+        apiStatus = "idle"
+    end
+    
+    -- Determine iris state
+    local irisState = "unknown"
+    if state.hasIris then
+        if state.irisClosed then
+            irisState = "closed"
+        else
+            irisState = "open"
+        end
+    else
+        irisState = "n/a"
+    end
+    
+    -- Count locked chevrons - use REAL interface method if available
+    local lockedCount = 0
+    
+    if hasMethod(interface, "getChevronsEngaged") then
+        lockedCount = interface.getChevronsEngaged() or 0
+    else
+        -- Fallback: count from our state tracking
+        for i = 1, 9 do
+            if state.chevrons[i] then
+                lockedCount = lockedCount + 1
+            end
+        end
+    end
+    
+    -- Build query parameters with BOTH addresses
+    local queryParams = string.format(
+        "?gate=%s&address=%s&dialed_address=%s&status=%s&iris=%s&locked_chevrons=%d",
+        textutils.urlEncode(CONFIG.STARGATE_NAME),
+        textutils.urlEncode(ownAddressStr),           -- This gate's coordinates
+        textutils.urlEncode(dialedAddressStr),        -- What we're dialing/connected to
+        textutils.urlEncode(apiStatus),
+        textutils.urlEncode(irisState),
+        lockedCount
+    )
+    
+    local fullURL = CONFIG.API_STATUS_URL .. queryParams
+    
+    -- Send POST request
+    local ok, response = pcall(http.post, fullURL, "")
+    
+    if ok and response then
+        response.close()
+        return true
+    else
+        if CONFIG.DEBUG_MODE then
+            print("[API STATUS] Report failed: " .. tostring(response))
+        end
+        return false
+    end
+end
+
+local function fetchDestinationsFromAPI()
+    if not CONFIG.API_ENABLED then
+        if CONFIG.DEBUG_MODE then
+            print("[API] Destination fetch disabled")
+        end
+        return false
+    end
+    
+    local ok, response = pcall(http.get, CONFIG.API_STATUS_URL)
+    
+    if ok and response then
+        local body = response.readAll()
+        response.close()
+        
+        local parseOk, gateList = pcall(textutils.unserializeJSON, body)
+        
+        if parseOk and gateList and type(gateList) == "table" then
+            -- Clear old destinations
+            DESTINATIONS = {}
+            
+            -- Parse each gate from the API
+            for _, gateData in ipairs(gateList) do
+                local gateName = gateData.gate
+                local addressStr = gateData.address or ""
+                
+                -- Skip our own gate
+                if gateName ~= CONFIG.STARGATE_NAME then
+                    -- Parse address string into table
+                    if addressStr and addressStr ~= "" then
+                        local addressTable = {}
+                        for numStr in string.gmatch(addressStr, "[^,]+") do
+                            local num = tonumber(numStr:match("^%s*(.-)%s*$"))  -- Trim whitespace
+                            if num then
+                                table.insert(addressTable, num)
+                            end
+                        end
+                        
+                        if #addressTable > 0 then
+                            DESTINATIONS[gateName] = addressTable
+                            if CONFIG.DEBUG_MODE then
+                                print("[API] Loaded destination: " .. gateName .. " = " .. addressStr)
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if CONFIG.DEBUG_MODE then
+                print("[API] Loaded " .. tostring(table.getn(DESTINATIONS)) .. " destinations")
+            end
+            
+            lastDestinationUpdate = os.clock()
+            return true
+        else
+            if CONFIG.DEBUG_MODE then
+                print("[API] Failed to parse gate list")
+            end
+            return false
+        end
+    else
+        if CONFIG.DEBUG_MODE then
+            print("[API] Failed to fetch destinations: " .. tostring(response))
+        end
+        return false
+    end
 end
 
 -- ============================================
@@ -178,6 +342,15 @@ local function selfCheck()
     detectGateType()
     detectIris()
     listAvailableMethods()
+    
+    -- Register with API and fetch destinations
+    if CONFIG.API_ENABLED then
+        log("Registering with API...", colors.cyan)
+        reportStatusToAPI()
+        log("Fetching gate network...", colors.cyan)
+        fetchDestinationsFromAPI()
+        log("Network sync complete", colors.green)
+    end
     
     log("=== SELF-CHECK COMPLETE ===", colors.green)
     state.status = "Idle"
@@ -334,6 +507,7 @@ local function openIris()
         
         if ok then
             log("IRIS OPENING", colors.lime)
+            reportStatusToAPI()  -- NEW!
         else
             log("ERROR opening iris: " .. tostring(err), colors.red)
         end
@@ -367,6 +541,7 @@ local function closeIris()
         
         if ok then
             log("IRIS CLOSING", colors.red)
+            reportStatusToAPI()  -- NEW!
         else
             log("ERROR closing iris: " .. tostring(err), colors.red)
         end
@@ -394,6 +569,8 @@ local function disconnectGate()
     for i = 1, 9 do
         state.chevrons[i] = false
     end
+    
+    reportStatusToAPI()  -- NEW!
 end
 
 -- ============================================
@@ -454,6 +631,7 @@ local function dialCrystalInterface(address)
     
     state.dialing = false
     log("CRYSTAL DIAL COMPLETE", colors.green)
+    reportStatusToAPI()  -- NEW!
     return true
 end
 
@@ -601,6 +779,7 @@ local function dialBasicInterface(address)
     
     state.dialing = false
     log("BASIC DIAL COMPLETE!", colors.green)
+    reportStatusToAPI()  -- NEW!
     return true
 end
 
@@ -776,6 +955,19 @@ local function renderDestinationScreen()
     drawText(1, 1, "SELECT DESTINATION", colors.yellow)
     drawText(1, 2, string.rep("=", 50), colors.gray)
     
+    -- Check if we have any destinations
+    local destCount = 0
+    for _ in pairs(DESTINATIONS) do
+        destCount = destCount + 1
+    end
+    
+    if destCount == 0 then
+        drawText(3, 5, "No destinations available", colors.red)
+        drawText(3, 6, "Waiting for gate network...", colors.yellow)
+        drawButton(3, 8, "CANCEL", colors.red)
+        return
+    end
+    
     local y = 4
     local i = 1
     for name, address in pairs(DESTINATIONS) do
@@ -868,6 +1060,15 @@ end
 local function statusUpdateLoop()
     while true do
         updateGateStatus()
+        
+        -- Report status to API
+        reportStatusToAPI()
+        
+        -- Refresh destinations every 30 seconds
+        if os.clock() - lastDestinationUpdate > 30 then
+            fetchDestinationsFromAPI()
+        end
+        
         if currentScreen == "main" then
             render()
         end
