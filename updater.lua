@@ -7,36 +7,39 @@
 -- The program is written in Lua and uses the ComputerCraft API for file handling and terminal input/output.
 -- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
 
+--Root URL for the repositories--
+local root_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/"
+
 --Self Update--
-local updater_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/updater.lua"
+local updater_url = root_url .. "updater.lua"
 
 --Mail System--
-local mailserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Mail/mail_server.lua"
-local mailclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Mail/mail_client.lua"
+local mailserver_url = root_url .. "Mail/mail_server.lua"
+local mailclient_url = root_url .. "Mail/mail_client.lua"
 
 --Music Player--
-local musicplayer_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/MusicPlayer/MusicPlayer.lua"
+local musicplayer_url = root_url .. "MusicPlayer/MusicPlayer.lua"
 
 --TicTacToe--
-local tictactoeserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/TicTacToe/TicTacToe_server.lua"
-local tictactoeclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/TicTacToe/TicTacToe_client.lua"
+local tictactoeserver_url = root_url .. "TicTacToe/TicTacToe_server.lua"
+local tictactoeclient_url = root_url .. "TicTacToe/TicTacToe_client.lua"
 
 --External Mail System--
-local externalmailclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/ExternalMail/mail_x_world.lua"
+local externalmailclient_url = root_url .. "ExternalMail/mail_x_world.lua"
 
 --Stargate--
-local stargate_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDial.lua"
-local stargate_auto_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialAuto.lua"
-local stargate_manual_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialManual.lua"
-local stargate_full_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/GateDialFull.lua"
-local stargate_remotedhd_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/RemoteDHD.lua"
-local stargate_readme_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Stargate/ReadMe.txt"
+local stargate_url = root_url .. "Stargate/GateDial.lua"
+local stargate_auto_url = root_url .. "Stargate/GateDialAuto.lua"
+local stargate_manual_url = root_url .. "Stargate/GateDialManual.lua"
+local stargate_full_url = root_url .. "Stargate/GateDialFull.lua"
+local stargate_remotedhd_url = root_url .. "Stargate/RemoteDHD.lua"
+local stargate_readme_url = root_url .. "Stargate/ReadMe.txt"
 
 --Powerstation--
-local powerstationserver_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Server.lua"
-local powerstationclient_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/Powerstation_Client.lua"
-local ps_server_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/PS_Server_test.lua"
-local ps_client_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/Powerstation/PS_Client_test.lua"
+local powerstationserver_url = root_url .. "Powerstation/Powerstation_Server.lua"
+local powerstationclient_url = root_url .. "Powerstation/Powerstation_Client.lua"
+local ps_server_url = root_url .. "Powerstation/PS_Server_test.lua"
+local ps_client_url = root_url .. "Powerstation/PS_Client_test.lua"
 
 local function downloadFile(url, filename) --Handles downloading the selected file
     local response = http.get(url)
