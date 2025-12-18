@@ -13,6 +13,9 @@ local root_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branc
 --Self Update--
 local updater_url = root_url .. "updater.lua"
 
+--DEBUG--
+print("updater url: " .. updater_url)
+
 --Mail System--
 local mailserver_url = root_url .. "Mail/mail_server.lua"
 local mailclient_url = root_url .. "Mail/mail_client.lua"
