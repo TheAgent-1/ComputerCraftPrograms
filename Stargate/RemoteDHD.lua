@@ -12,7 +12,8 @@ local CONFIG = {
     API_COMMAND_URL = "http://192.168.1.41:5005/sg-command",
     API_STATUS_URL = "http://192.168.1.41:5005/sg-status/api",  -- NEW!
     LOGIN_CODE = "1234",  -- Change this!
-    DEVICE_NAME = "Remote DHD"
+    DEVICE_NAME = "Remote DHD",
+    FORCE_RUN = false  -- Set to true to allow running off a Pocket Computer for testing
 }
 
 -- Gate network - populated from API
@@ -427,8 +428,8 @@ end
 -- ============================================
 
 local function main()
-    -- Check if running on pocket computer
-    if not pocket then
+    -- Check if running on pocket computer (or forced via CONFIG)
+    if not (pocket or CONFIG.FORCE_RUN) then
         print("ERROR: This program requires")
         print("a Pocket Computer!")
         print("")
