@@ -8,7 +8,7 @@
 -- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
 
 --Root URL for the repositories--
-local root_url = "http://192.168.1.41:3002/Jacob/ComputerCraftPrograms/raw/branch/main/"
+local root_url = "http://192.168.1.41:3000/Jacob/ComputerCraftPrograms/raw/branch/main/"
 
 --Self Update--
 local updater_url = root_url .. "updater.lua"
@@ -42,18 +42,48 @@ local ps_server_url = root_url .. "Powerstation/PS_Server_test.lua"
 local ps_client_url = root_url .. "Powerstation/PS_Client_test.lua"
 
 local function downloadFile(url, filename) --Handles downloading the selected file
-    local response = http.get(url)
-    if response then
-        local content = response.readAll()
-        response.close()
-        local file = fs.open(filename, "w")
+    local ok, response = pcall(http.get, url)
+    if not ok or not response then
+        print("Failed to download " .. filename)
+        return false
+    end
+    local status
+    if response.getResponseCode then
+        status = response.getResponseCode()
+    end
+    local content = response.readAll()
+    response.close()
+    if status and (status < 200 or status >= 300) then
+        print("HTTP error " .. tostring(status) .. " for " .. filename)
+        return false
+    end
+    local tmpName = filename .. ".tmp"
+    local okWrite, err = pcall(function()
+        local file = fs.open(tmpName, "w")
         file.write(content)
         file.close()
-        print(filename .. " downloaded successfully.")
-        return true
-    else
-        print("Failed to download " .. filename)
+    end)
+    if not okWrite then
+        print("Failed to write file: " .. tostring(err))
+        if fs.exists(tmpName) then fs.delete(tmpName) end
+        return false
     end
+    if fs.exists(filename) then fs.delete(filename) end
+    local movedOk, moveErr = pcall(function() fs.move(tmpName, filename) end)
+    if not movedOk then
+        print("Failed to finalize download: " .. tostring(moveErr))
+        if fs.exists(tmpName) then fs.delete(tmpName) end
+        return false
+    end
+    print(filename .. " downloaded successfully.")
+    return true
+end
+
+local function getInput()
+    local s = read()
+    if not s then return "" end
+    s = s:match("^%s*(.-)%s*$")
+    return s:upper()
 end
 
 local function SelfUpdate()
@@ -75,7 +105,7 @@ local function MailInstall() --Handles installing the mail system
     print("2 - Client")
     write("Select an option: ")
 
-    local choice = read()
+    local choice = getInput()
     if choice == "1" then
         downloadFile(mailserver_url, "MailServer.lua")
     elseif choice == "2" then
@@ -90,7 +120,7 @@ local function MusicInstall() --Handles installing the music player
     term.setCursorPos(1, 1)
     print("Music Player is currently broken.")
     print("Would you like to download it anyway? (Y/N)")
-    local choice = read()
+    local choice = getInput()
     if choice == "Y" then
         downloadFile(musicplayer_url, "MusicPlayer.lua")
     elseif choice == "N" then
@@ -108,7 +138,7 @@ local function TicTacToeInstall() --Handles installing the TicTacToe game
     print("2 - Client")
     write("Select an option: ")
 
-    local choice = read()
+    local choice = getInput()
     if choice == "1" then
         downloadFile(tictactoeserver_url, "TicTacToeServer.lua")
     elseif choice == "2" then
@@ -125,7 +155,7 @@ local function ExternalMailInstall() --Handles installing the external mail syst
     print("1 - Client")
     write("Select an option: ")
 
-    local choice = read()
+    local choice = getInput()
     if choice == "1" then
         downloadFile(externalmailclient_url, "MailXWorld.lua")
     else
@@ -144,7 +174,7 @@ local function StargateInstall() --Handles installing the Stargate program
     print("5 - RemoteDHD")
     write("Select an option: ")
 
-    local choice = read()
+    local choice = getInput()
     if choice == "1" then
         downloadFile(stargate_url, "GateDial.lua")
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
@@ -180,7 +210,7 @@ local function PowerstationInstall() --Handles installing the Powerstation progr
     print("4 - Powerstation Client - Test Branch")
     write("Select an option: ")
 
-    local choice = read()
+    local choice = getInput()
     if choice == "1" then
         downloadFile(powerstationserver_url, "Powerstation_Server.lua")
     elseif choice == "2" then
@@ -209,12 +239,11 @@ local function main() --Handles main screen
     print("5 - Stargate")
     print("6 - Powerstation")
     write("Select an option: ")
-
-    local choice = read()
+    local choice = getInput()
     if choice == "0" then
         term.clear()
         term.setCursorPos(1, 1)
-        return
+        return false
     elseif choice == "-1" then
         SelfUpdate()
     elseif choice == "1" then
@@ -232,6 +261,10 @@ local function main() --Handles main screen
     else
         print("Invalid option. Exiting.")
     end
+    return true
 end
 
-main()
+local shouldContinue = true
+while shouldContinue do
+    shouldContinue = main()
+end
