@@ -208,6 +208,8 @@ local function StargateInstall() --Handles installing the Stargate program
         downloadFile(stargate_remotedhd_url, "RemoteDHD.lua")
         --downloadFile(stargate_readme_url, "Stargate_Readme.txt")
         --print("Run 'edit Stargate_Readme.txt' to view the Readme")
+    elseif choice == "6" then
+        downloadFile(stargate_register_url, "GateRegister.lua")
     else
         print("Invalid option. Exiting.")
     end
