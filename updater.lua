@@ -7,6 +7,10 @@
 -- The program is written in Lua and uses the ComputerCraft API for file handling and terminal input/output.
 -- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
 
+
+---=====================================
+-- URL Definitions
+--=====================================
 --Root URL for the repositories--
 local root_url = "http://192.168.1.41:3000/Jacob/ComputerCraftPrograms/raw/branch/main/"
 
@@ -33,6 +37,7 @@ local stargate_auto_url = root_url .. "Stargate/GateDialAuto.lua"
 local stargate_manual_url = root_url .. "Stargate/GateDialManual.lua"
 local stargate_full_url = root_url .. "Stargate/GateDialFull.lua"
 local stargate_remotedhd_url = root_url .. "Stargate/RemoteDHD.lua"
+local stargate_register_url = root_url .. "Stargate/GateRegister.lua"
 local stargate_readme_url = root_url .. "Stargate/ReadMe.txt"
 
 --Powerstation--
@@ -41,6 +46,10 @@ local powerstationclient_url = root_url .. "Powerstation/Powerstation_Client.lua
 local ps_server_url = root_url .. "Powerstation/PS_Server_test.lua"
 local ps_client_url = root_url .. "Powerstation/PS_Client_test.lua"
 
+
+--=====================================
+-- Utility Functions
+--=====================================
 local function downloadFile(url, filename) --Handles downloading the selected file
     local ok, response = pcall(http.get, url)
     if not ok or not response then
@@ -97,6 +106,9 @@ local function SelfUpdate()
     end
 end
 
+--=====================================
+-- Installation Functions
+--=====================================
 local function MailInstall() --Handles installing the mail system
     term.clear()
     term.setCursorPos(1, 1)
@@ -170,8 +182,9 @@ local function StargateInstall() --Handles installing the Stargate program
     print("1 - GateDial")
     print("2 - GateDialAuto")
     print("3 - GateDialManual")
-    print("4 - GateDialFull")
-    print("5 - RemoteDHD")
+    print("4 - GateDialFull (Recommended)")
+    print("5 - RemoteDHD (Only for Portable Devices)")
+    print("6 - GateRegister")
     write("Select an option: ")
 
     local choice = getInput()
@@ -224,6 +237,9 @@ local function PowerstationInstall() --Handles installing the Powerstation progr
     end
 end
 
+--=====================================
+-- Main Loop
+--=====================================
 local function main() --Handles main screen
     term.clear()
     term.setCursorPos(1, 1)
@@ -236,7 +252,7 @@ local function main() --Handles main screen
     print("2 - Install Music Player (Broken)")
     print("3 - Install TicTacToe (Broken)")
     print("4 - Install External Mail System")
-    print("5 - Stargate")
+    print("5 - Install Stargate")
     print("6 - Powerstation")
     write("Select an option: ")
     local choice = getInput()
