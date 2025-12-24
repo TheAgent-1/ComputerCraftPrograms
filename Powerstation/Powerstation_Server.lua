@@ -223,6 +223,13 @@ local function mainCLI()
         os.pullEvent("key")
         return true
     end
+
+    if command ~= "" then
+        print("[ERROR] Unknown command: " .. command)
+        print("Type 'help' for a list of commands.")
+        print("Press any key to continue...")
+        os.pullEvent("key")
+    end
 end
 
 -- Entry Point
