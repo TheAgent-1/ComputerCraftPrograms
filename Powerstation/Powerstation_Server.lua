@@ -127,7 +127,9 @@ local function mainCLI()
     print("Type 'help' for a list of commands.")
     write("> ")
     local input = read()
-    local command = string.lower(input)
+
+    -- trim and lowercase the input for easier parsing
+    local command = string.lower(string.gsub(input, "^%s*(.-)%s*$", "%1"))
 
     if command == "help" then
         print("Available commands:")
@@ -178,6 +180,7 @@ local function mainCLI()
         end
         print("Press any key to continue...")
         os.pullEvent("key")
+        
         return true
     end
 
