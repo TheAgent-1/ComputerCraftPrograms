@@ -229,6 +229,7 @@ local function mainCLI()
         print("Type 'help' for a list of commands.")
         print("Press any key to continue...")
         os.pullEvent("key")
+        return true
     end
 end
 
