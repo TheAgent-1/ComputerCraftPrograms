@@ -2,10 +2,11 @@
 -- Handles power station operations and Ingame command sending
 -- This script is to be run with a connected monitor peripheral (later used for display purposes)
 -- send commands to the clients via an external API (192.168.1.41:5005/powerstation/api)
+-- status messages and data fetching are through the same API (192.168.1.41:5005/powerstation/api/status)
 
 local CONFIG = {
     API_URL = "http://192.168.1.41:5005/powerstation/api",
-    STATUS_URL = API_URL .. "/status"
+    STATUS_URL = "http://192.168.1.41:5005/powerstation/api/status"
 }
 
 local monitor = nil
@@ -59,7 +60,7 @@ local function getAPIData(dataType)
     end
 
     -- Fetch data from the powerstation API
-    local response = http.get(CONFIG.API_URL)
+    local response = http.get(CONFIG.STATUS_URL)
     if response then
         local body = response.readAll()
         response.close()
@@ -87,38 +88,32 @@ local function sendCommandToAPI(action, value)
     -- Structure: (pick one)
     --      "action": "set-speed", "value": <number> (this sets the rotation speed controller value)
     --      "action": "set-relay", "value": "on"/"off" (this sets the relay state)
-    --      "action": "get-power" (this fetches the current power reserves)
-    --      "action": "get-stress" (this fetches the current stress level)
     if not apiStatus then
         print("[ERROR] API is offline, cannot send command")
         return nil
     end
 
-    -- check if action is valid, and if value is required
+    -- check if action is valid
     local postData = nil
     if action == "set-speed" then
         postData = textutils.serializeJSON({action = action, value = value})
     elseif action == "set-relay" then
         postData = textutils.serializeJSON({action = action, value = value})
-    elseif action == "get-power" then
-        postData = textutils.serializeJSON({action = action})
-    elseif action == "get-stress" then
-        postData = textutils.serializeJSON({action = action})
-    else
-        print("[ERROR] Invalid action: " .. action)
-        return nil
     end
 
-    -- send that fucker!
-    local response = http.post(CONFIG.API_URL, postData, {["Content-Type"] = "application/json"})
-    if response then
-        print("[INFO] Command '" .. action .. "' sent successfully")
-        response.close()
-        return true
+    if postData then
+        local response = http.post(CONFIG.API_URL, postData, {["Content-Type"] = "application/json"})
+        if response then
+            local body = response.readAll()
+            response.close()
+            print("[INFO] Command '" .. action .. "' sent successfully.")
+        else
+            print("[ERROR] Failed to send command to API.")
+        end
     else
-        print("[ERROR] Failed to send command '" .. action .. "'")
-        return false
+        print("[ERROR] Invalid action or missing value for action: " .. action)
     end
+    
 end
 
 -- ============================================
