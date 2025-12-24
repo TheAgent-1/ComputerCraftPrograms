@@ -4,7 +4,7 @@
 -- send commands to the clients via an external API (192.168.1.41:5005/powerstation/api)
 
 local CONFIG = {
-    API_URL = "http://192.168.1.41:5005/powerstation/api"
+    API_URL = "http://192.168.1.41:5005/powerstation/api",
     STATUS_URL = API_URL .. "/status"
 }
 
