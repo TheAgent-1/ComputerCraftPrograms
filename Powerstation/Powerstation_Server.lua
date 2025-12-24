@@ -163,7 +163,7 @@ local function mainCLI()
 
     -- Now handle commands that control the powerstation
     -- RSC COMMAND
-    if command :match("^rsc%s") then
+    if command :match("^rsc") then
         local _, _, valueStr = string.find(command, "^rsc%s+(%-?%d+)")
         local value = tonumber(valueStr)
         if value then
@@ -185,7 +185,7 @@ local function mainCLI()
     end
 
     -- RELAY COMMAND
-    if command :match("^relay%s") then
+    if command :match("^relay") then
         local _, _, state = string.find(command, "^relay%s+(%a+)")
         if state then
             state = string.lower(state)
