@@ -228,7 +228,7 @@ local function mainCLI()
         os.pullEvent("key")
         return true
     end
-
+end
 
 -- Entry Point
 local shouldContinue = true
