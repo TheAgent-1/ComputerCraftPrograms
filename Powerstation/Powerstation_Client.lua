@@ -99,15 +99,18 @@ local function applyState(state)
                 CONFIG.DIGITAL_ADAPTER_SIDE,
                 state.rotationSpeedController
             )
+            print("RSC set to", state.rotationSpeedController)
         end
 
     -- RELAY WORKER
     elseif CONFIG.CLIENT_TYPE == "RELAY" then
         if state.relayState == "on" then
             redstone.setOutput(CONFIG.PERIPHERAL_SIDE, true)
+            print("Relay set to ON")
 
         elseif state.relayState == "off" then
             redstone.setOutput(CONFIG.PERIPHERAL_SIDE, false)
+            print("Relay set to OFF")
 
             -- Detect relay desync / fault condition
             if peripheralDevice0.isPowered() then
