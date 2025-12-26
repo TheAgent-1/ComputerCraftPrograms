@@ -104,7 +104,7 @@ while true do
     end
 
     -- Read user input
-    command = input("Enter command (dial <gate_name>, close, iris-open, iris-close): ")
+    local command = write("Enter command (dial <gate_name>, close, iris-open, iris-close): ")
     if command then
         local cmd, arg = command:match("^(%S+)%s*(%S*)$")
         if cmd == "dial" and arg ~= "" then
@@ -237,7 +237,7 @@ while true do
     end
 
     -- Read user input
-    command = input("Enter command (dial <gate_name>, close, iris-open, iris-close): ")
+    local command = write("Enter command (dial <gate_name>, close, iris-open, iris-close): ")
     if command then
         local cmd, arg = command:match("^(%S+)%s*(%S*)$")
         if cmd == "dial" and arg ~= "" then

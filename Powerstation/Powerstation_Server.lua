@@ -67,20 +67,32 @@ local function getAPIData(dataType)
         data = textutils.unserializeJSON(body)
     end
 
+    if not data then
+        print("[ERROR] Failed to retrieve data from API")
+        return nil
+    end
+
+    local result = nil
+     -- Return requested data based on dataType
     if dataType == "rsc" then
-        return data.rotationSpeedController
+        result = data.rotationSpeedController
     elseif dataType == "relay" then
-        return data.relayState
+        result = data.relayState
     elseif dataType == "power" then
-        return data.powerReserves
+        result = data.powerReserves
     elseif dataType == "stress" then
-        return data.stressLevel
+        result = data.stressLevel
     else
         print("[ERROR] Unknown dataType: " .. dataType)
         return nil
     end
 
+    if result == nil then
+        print("[ERROR] Data for " .. dataType .. " is nil")
+        return nil
+    end
 
+    return result
 end
 
 local function sendCommandToAPI(action, value)

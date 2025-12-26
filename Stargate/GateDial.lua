@@ -12,15 +12,15 @@ local status = "http://192.168.1.41:5005/sg-status"
 local interface = nil
 local interfaceType = nil
 
-if peripheral.find("advanced_crystal_interface")
+if peripheral.find("advanced_crystal_interface") then
     interface = peripheral.find("advanced_crystal_interface")
     interfaceType = "advanced_crystal_interface"
 
-elseif peripheral.find("crystal_interface")
+elseif peripheral.find("crystal_interface") then
     interface = peripheral.find("crystal_interface")
     interfaceType = "crystal_interface"
 
-elseif peripheral.find("basic_interface")
+elseif peripheral.find("basic_interface") then
     interface = peripheral.find("basic_interface")
     interfaceType = "basic_interface"
 end
@@ -153,7 +153,7 @@ local function manualLoop()
         term.clear()
         term.setCursorPos(1,1)
         print("Stargate Dialer")
-        print("Interface: " ..interface..)
+        print("Interface: " .. interface)
         print("Available Stargates:")
         for name, address in pairs(Gates) do
             print(name .. ": " .. table.concat(address, ", "))
