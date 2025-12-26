@@ -5,127 +5,145 @@
 -- RSC (Rotation Speed Controller)
 -- RELAY
 -- STRESS
+--
+-- This client is a "worker node":
+--  - It polls desired state from the API
+--  - Applies changes ONLY when commands change
+--  - Does NOT make decisions itself
 
 local CONFIG = {
-    CLIENT_TYPE = "RSC", -- Options: "RSC", "RELAY", "BATTERY", STRESS
-    PERIPHERAL_SIDE = "back", -- The side where the digital adapter is connected (for RSC, RELAY, STRESS) or the side of the battery box (for BATTERY)
-    DIGITAL_ADAPTER_SIDE = "back", -- Side of the digital adapter that connects to the peripheral (only needed for RSC, RELAY, STRESS)
-    BATTERY_COUNT = 1, -- Number of battery boxes connected (only needed for BATTERY type)
-    API_URL = "http://192.168.1.41:5005/powerstation/api",
-    STATUS_URL = "http://192.168.1.41:5005/powerstation/api/status"
+    CLIENT_TYPE = "RSC", -- Options: "RSC", "RELAY", "BATTERY", "STRESS"
+    PERIPHERAL_SIDE = "back", -- Side where the peripheral or digital adapter is connected
+    DIGITAL_ADAPTER_SIDE = "back", -- Adapter-side connection (RSC / STRESS only)
+    BATTERY_COUNT = 1, -- Only needed for BATTERY type
+    API_URL = "http://192.168.1.40:5005/powerstation/api",
+    STATUS_URL = "http://192.168.1.40:5005/powerstation/api/status"
 }
 
---=============================================
+-- ============================================
 -- PERIPHERAL SETUP
---=============================================
-local peripheralDevice0 = nil -- Main peripheral device (RSC, RELAY, or BATTERY)
-local peripheralDevice1 = nil -- Reserved for BATTERY type if needing more power storage >90MFE (total 180MFE: 180,000,000 FE)
-local peripheralDevice2 = nil -- Reserved for BATTERY type if needing even more power storage >180MFE (total 270MFE: 270,000,000 FE)
+-- ============================================
+local peripheralDevice0 = nil
+local peripheralDevice1 = nil
+local peripheralDevice2 = nil
 
 if CONFIG.CLIENT_TYPE == "RSC" then
-    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE) -- RSC has to be connected via digital adapter
+    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE)
 
 elseif CONFIG.CLIENT_TYPE == "RELAY" then
-    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE) -- Relay connected directly via redstone
-    -- while relay can be controlled via redstone, we still wrap it for use with its functions if needed
+    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE)
 
 elseif CONFIG.CLIENT_TYPE == "STRESS" then
-    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE) -- Stress Monitor connected via digital adapter
+    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE)
 
 elseif CONFIG.CLIENT_TYPE == "BATTERY" then
-    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE) -- Battery Box
+    peripheralDevice0 = peripheral.wrap(CONFIG.PERIPHERAL_SIDE)
     if CONFIG.BATTERY_COUNT >= 2 then
-        peripheralDevice1 = peripheral.wrap("right") -- Second Battery Box on the right side
+        peripheralDevice1 = peripheral.wrap("right")
     end
     if CONFIG.BATTERY_COUNT >= 3 then
-        peripheralDevice2 = peripheral.wrap("left") -- Third Battery Box on the left side
+        peripheralDevice2 = peripheral.wrap("left")
     end
 end
 
 -- ============================================
--- UTILS
+-- API UTILS
 -- ============================================
-local function getAPIData(dataType)
-    -- Fetch data from the STATUS_URL endpoint
-    -- this will be use to set the peripheral states
-    -- this will be formatted as JSON:
-    --  {
-    --      "rotationSpeedController": 0,
-    --      "relayState": "off",
-    --      "powerReserves": 0,
-    --      "stressLevel": 0
-    --  }
 
+-- Fetch full powerstation state from the API
+local function fetchState()
     local response = http.get(CONFIG.STATUS_URL)
-    if response then
-        local responseData = response.readAll()
-        response.close()
-        local data = textutils.unserializeJSON(responseData)
-        if data and data[dataType] ~= nil then
-            return data[dataType]
-        else
-            print("Error: Invalid data type requested from API - " .. dataType)
-            return nil
-        end
-    else
-        print("Error: Unable to connect to API at " .. CONFIG.STATUS_URL)
+    if not response then
+        print("[ERROR] Cannot reach Powerstation API")
         return nil
     end
+
+    local body = response.readAll()
+    response.close()
+
+    return textutils.unserializeJSON(body)
 end
 
-local function setAPIData(action, value)
-    -- Send data to the API endpoint to update the server state
-    -- This is not used in the current client logic but can be implemented if needed
-    local payload = {}
-    payload[action] = value
-    local jsonData = textutils.serializeJSON(payload)
+-- Send a command back to the API (same protocol as server CLI / web UI)
+local function sendCommand(action, value)
+    local payload = textutils.serializeJSON({
+        action = action,
+        value = value
+    })
 
-    local response = http.post(CONFIG.API_URL, jsonData, {["Content-Type"] = "application/json"})
-    if response then
-        response.close()
-    else
-        print("Error: Unable to send data to API at " .. CONFIG.API_URL)
-    end
+    local response = http.post(
+        CONFIG.API_URL,
+        payload,
+        { ["Content-Type"] = "application/json" }
+    )
+
+    if response then response.close() end
 end
+
+-- ============================================
+-- COMMAND TRACKING
+-- ============================================
+
+-- Prevents re-applying the same command every poll
+local lastCommandId = -1
+
 -- ============================================
 -- MAIN LOGIC
 -- ============================================
-local function main()
-    local rotationSpeed = getAPIData("rotationSpeedController")
-    local relayState = getAPIData("relayState")
-    local powerReserves = getAPIData("powerReserves")
-    local stressLevel = getAPIData("stressLevel")
 
+local function applyState(state)
+    -- RSC WORKER
     if CONFIG.CLIENT_TYPE == "RSC" then
-        if rotationSpeed ~= nil then
-            peripheralDevice0.setTargetSpeed(CONFIG.DIGITAL_ADAPTER_SIDE, rotationSpeed)
+        if state.rotationSpeedController ~= nil then
+            peripheralDevice0.setTargetSpeed(
+                CONFIG.DIGITAL_ADAPTER_SIDE,
+                state.rotationSpeedController
+            )
         end
-    elseif CONFIG.CLIENT_TYPE == "RELAY" then
-        if relayState ~= nil then
-            -- Relay state can be "on","off",or "ERROR"
-            if relayState == "on" then
-                redstone.setOutput(CONFIG.PERIPHERAL_SIDE,true)
-            elseif relayState == "off" then
-                redstone.setOutput(CONFIG.PERIPHERAL_SIDE,false)
-            elseif relayState == "off" and peripheralDevice0.isPowered() then
-                print("Warning: Relay in ERROR state but is powered!")
-                setAPIData("set-relay","ERROR")
 
+    -- RELAY WORKER
+    elseif CONFIG.CLIENT_TYPE == "RELAY" then
+        if state.relayState == "on" then
+            redstone.setOutput(CONFIG.PERIPHERAL_SIDE, true)
+
+        elseif state.relayState == "off" then
+            redstone.setOutput(CONFIG.PERIPHERAL_SIDE, false)
+
+            -- Detect relay desync / fault condition
+            if peripheralDevice0.isPowered() then
+                print("[WARN] Relay reports OFF but is powered")
+                sendCommand("set-relay", "ERROR")
             end
         end
+
+    -- STRESS WORKER (read-only)
     elseif CONFIG.CLIENT_TYPE == "STRESS" then
-        if stressLevel ~= nil then
-            print("Stress Level: " .. stressLevel)
+        if state.stressLevel ~= nil then
+            print("Stress Level:", state.stressLevel)
         end
+
+    -- BATTERY WORKER (read-only)
     elseif CONFIG.CLIENT_TYPE == "BATTERY" then
-        if powerReserves ~= nil then
-            print("Power Reserves: " .. powerReserves)
+        if state.powerReserves ~= nil then
+            print("Power Reserves:", state.powerReserves, "FE")
+        end
+    end
+end
+
+-- ============================================
+-- MAIN LOOP
+-- ============================================
+
+while true do
+    local state = fetchState()
+
+    if state and state.command_id ~= nil then
+        -- Only act when a new command is issued
+        if state.command_id ~= lastCommandId then
+            applyState(state)
+            lastCommandId = state.command_id
         end
     end
 
-end
-
-while true do
-    main()
     sleep(1)
 end

@@ -5,8 +5,8 @@
 -- status messages and data fetching are through the same API (192.168.1.41:5005/powerstation/api/status)
 
 local CONFIG = {
-    API_URL = "http://192.168.1.41:5005/powerstation/api",
-    STATUS_URL = "http://192.168.1.41:5005/powerstation/api/status"
+    API_URL = "http://192.168.1.40:5005/powerstation/api",
+    STATUS_URL = "http://192.168.1.40:5005/powerstation/api/status"
 }
 
 local monitor = nil
