@@ -11,8 +11,8 @@
 local CONFIG = {
     STARGATE_NAME = "Earth",  -- Name of this Stargate
     STARGATE_ADDRESS = {1, 2, 3, 4, 5, 6, 0},  -- Address of this Stargate
-    API_URL = "http://192.168.1.41:5005/sg-command/api",
-    API_STATUS_URL = "http://192.168.1.41:5005/sg-status/api",
+    API_URL = "http://croul.duckdns.org:5005/stargate/api",
+    API_STATUS_URL = "http://croul.duckdns.org:5005/stargate/api/status",
     API_ENABLED = true,
     DEBUG_MODE = true
 }

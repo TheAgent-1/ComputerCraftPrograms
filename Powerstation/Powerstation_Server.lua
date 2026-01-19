@@ -1,260 +1,565 @@
 -- PowerStation Server Script for CC:Tweaked
--- Handles power station operations and Ingame command sending
--- This script is to be run with a connected monitor peripheral (later used for display purposes)
--- send commands to the clients via an external API (192.168.1.41:5005/powerstation/api)
--- status messages and data fetching are through the same API (192.168.1.41:5005/powerstation/api/status)
+-- Handles power station operations and in-game command sending
+-- Communicates with external API at 192.168.1.40:5005/powerstation/api
 
 local CONFIG = {
-    API_URL = "http://192.168.1.40:5005/powerstation/api",
-    STATUS_URL = "http://192.168.1.40:5005/powerstation/api/status"
+    API_BASE = "http://192.168.1.40:5005/powerstation/api",
+    REPORT_INTERVAL = 5,  -- For dashboard auto-refresh
 }
 
 local monitor = nil
-local apiStatus = false
-
+local apiOnline = false
 
 -- ============================================
--- SETUPS
+-- SETUP
 -- ============================================
 local function findMonitor()
-    -- Find and setup the monitor peripheral
-    monitor = nil
     monitor = peripheral.find("monitor")
-    if not monitor then
-        error("[FATAL] No monitor found!")
+    if monitor then
+        monitor.setTextScale(0.5)
+        monitor.clear()
+        monitor.setBackgroundColor(colors.black)
+        monitor.setTextColor(colors.white)
+        print("[INFO] Monitor found and configured")
+        return true
+    else
+        print("[WARN] No monitor found - continuing without display")
+        return false
     end
-
-    monitor.setTextScale(0.5)
-    monitor.clear()
-    monitor.setBackgroundColor(colors.black)
-    monitor.setTextColor(colors.white)
-
 end
 
 local function testAPI()
-    -- Test connection to external API (similar to heartbeat)
-    -- just ensure we can reach it
-    local response = http.get(CONFIG.API_URL)
+    local response = http.get(CONFIG.API_BASE .. "/status")
     if response then
         local body = response.readAll()
         response.close()
-        print("[INFO] API Connection Successful")
-        apiStatus = true
-    else
-        print("[ERROR] Unable to connect to API at " .. CONFIG.API_URL)
-        apiStatus = false
-    end
-    return apiStatus
-end
-
-
--- ============================================
--- UTILS
--- ============================================
-local function getAPIData(dataType)
-    local data = nil
-
-    if not apiStatus then
-        print("[ERROR] API is offline, cannot fetch data")
-        return nil
-    end
-
-    -- Fetch data from the powerstation API
-    local response = http.get(CONFIG.STATUS_URL)
-    if response then
-        local body = response.readAll()
-        response.close()
-        data = textutils.unserializeJSON(body)
-    end
-
-    if not data then
-        print("[ERROR] Failed to retrieve data from API")
-        return nil
-    end
-
-    local result = nil
-     -- Return requested data based on dataType
-    if dataType == "rsc" then
-        result = data.rotationSpeedController
-    elseif dataType == "relay" then
-        result = data.relayState
-    elseif dataType == "power" then
-        result = data.powerReserves
-    elseif dataType == "stress" then
-        result = data.stressLevel
-    else
-        print("[ERROR] Unknown dataType: " .. dataType)
-        return nil
-    end
-
-    if result == nil then
-        print("[ERROR] Data for " .. dataType .. " is nil")
-        return nil
-    end
-
-    return result
-end
-
-local function sendCommandToAPI(action, value)
-    -- Send a command to the powerstation API
-    -- Structure: (pick one)
-    --      "action": "set-speed", "value": <number> (this sets the rotation speed controller value)
-    --      "action": "set-relay", "value": "on"/"off" (this sets the relay state)
-    if not apiStatus then
-        print("[ERROR] API is offline, cannot send command")
-        return nil
-    end
-
-    -- check if action is valid
-    local postData = nil
-    if action == "set-speed" then
-        postData = textutils.serializeJSON({action = action, value = value})
-    elseif action == "set-relay" then
-        postData = textutils.serializeJSON({action = action, value = value})
-    end
-
-    if postData then
-        local response = http.post(CONFIG.API_URL, postData, {["Content-Type"] = "application/json"})
-        if response then
-            local body = response.readAll()
-            response.close()
-            print("[INFO] Command '" .. action .. "' sent successfully.")
-        else
-            print("[ERROR] Failed to send command to API.")
+        local data = textutils.unserializeJSON(body)
+        if data and data.status == "ok" then
+            print("[INFO] API Connection Successful (v" .. (data.version or "?") .. ")")
+            apiOnline = true
+            return true
         end
-    else
-        print("[ERROR] Invalid action or missing value for action: " .. action)
+    end
+    print("[ERROR] Unable to connect to API")
+    apiOnline = false
+    return false
+end
+
+-- ============================================
+-- API UTILITIES
+-- ============================================
+
+-- Fetch full state from API
+local function getFullState()
+    if not apiOnline then
+        return nil
     end
     
+    local response = http.get(CONFIG.API_BASE .. "/status")
+    if not response then
+        print("[ERROR] Failed to fetch state")
+        return nil
+    end
+    
+    local body = response.readAll()
+    response.close()
+    
+    local data = textutils.unserializeJSON(body)
+    if data and data.state then
+        return data.state
+    end
+    
+    return nil
+end
+
+-- Fetch specific endpoint data
+local function getEndpointData(endpoint)
+    if not apiOnline then
+        return nil
+    end
+    
+    local response = http.get(CONFIG.API_BASE .. "/" .. endpoint)
+    if not response then
+        return nil
+    end
+    
+    local body = response.readAll()
+    response.close()
+    
+    return textutils.unserializeJSON(body)
+end
+
+-- Send a target value to an endpoint
+local function setTarget(endpoint, value)
+    if not apiOnline then
+        print("[ERROR] API is offline, cannot send command")
+        return false
+    end
+    
+    local payload = textutils.serializeJSON({ target = value })
+    
+    local response = http.post(
+        CONFIG.API_BASE .. "/" .. endpoint,
+        payload,
+        { ["Content-Type"] = "application/json" }
+    )
+    
+    if response then
+        local body = response.readAll()
+        response.close()
+        local result = textutils.unserializeJSON(body)
+        
+        if result and result.status then
+            print("[OK] " .. result.status)
+            return true
+        elseif result and result.error then
+            print("[ERROR] " .. result.error)
+            return false
+        end
+    end
+    
+    print("[ERROR] Failed to send command")
+    return false
+end
+
+-- ============================================
+-- DISPLAY UTILITIES
+-- ============================================
+
+local function printHeader()
+    term.clear()
+    term.setCursorPos(1, 1)
+    term.setTextColor(colors.yellow)
+    print("========================================")
+    print("       POWERSTATION CONTROL CLI        ")
+    print("========================================")
+    term.setTextColor(colors.white)
+end
+
+local function printStatus(state)
+    if not state then
+        term.setTextColor(colors.red)
+        print("  [API OFFLINE - No data available]")
+        term.setTextColor(colors.white)
+        return
+    end
+    
+    print("")
+    term.setTextColor(colors.cyan)
+    print("  --- Current State ---")
+    term.setTextColor(colors.white)
+    
+    -- RSC
+    local targetRsc = state.target_rsc or 0
+    local currentRsc = state.current_rsc or 0
+    print(string.format("  RSC Target:  %d RPM", targetRsc))
+    print(string.format("  RSC Actual:  %d RPM", currentRsc))
+    
+    -- Relay
+    local targetRelay = state.target_relay and "ON" or "OFF"
+    local currentRelay = state.current_relay and "ON" or "OFF"
+    print(string.format("  Relay Target:  %s", targetRelay))
+    print(string.format("  Relay Actual:  %s", currentRelay))
+    
+    -- Read-only sensors
+    print("")
+    term.setTextColor(colors.cyan)
+    print("  --- Sensors ---")
+    term.setTextColor(colors.white)
+    print(string.format("  Stress:   %d SU", state.stress or 0))
+    print(string.format("  Battery:  %d FE", state.battery or 0))
+    
+    -- Version
+    print("")
+    term.setTextColor(colors.gray)
+    print(string.format("  Command Version: %d", state.target_version or 0))
+    term.setTextColor(colors.white)
+end
+
+local function waitForKey()
+    print("")
+    term.setTextColor(colors.gray)
+    print("Press any key to continue...")
+    term.setTextColor(colors.white)
+    os.pullEvent("key")
+end
+
+-- ============================================
+-- COMMAND HANDLERS
+-- ============================================
+
+local function cmdHelp()
+    printHeader()
+    print("")
+    term.setTextColor(colors.green)
+    print("Available Commands:")
+    term.setTextColor(colors.white)
+    print("  help              Show this help message")
+    print("  status / s        Show current powerstation state")
+    print("  dashboard / d     Live updating dashboard")
+    print("  api               Test API connection")
+    print("  exit / quit       Exit the CLI")
+    
+    term.setTextColor(colors.green)
+    print("Control Commands:")
+    term.setTextColor(colors.white)
+    print("  rsc               Show RSC values")
+    print("  rsc <-256 to 256> Set RSC target speed")
+    print("")
+    print("  relay             Show relay state")
+    print("  relay on          Turn relay ON")
+    print("  relay off         Turn relay OFF")
+    print("")
+    print("  power             Show battery level")
+    print("  stress            Show stress level")
+    
+    waitForKey()
+    return true
+end
+
+local function cmdStatus()
+    printHeader()
+    local state = getFullState()
+    printStatus(state)
+    waitForKey()
+    return true
+end
+
+local function cmdDashboard()
+    -- Live updating dashboard - press Q to exit
+    while true do
+        printHeader()
+        local state = getFullState()
+        printStatus(state)
+        
+        print("")
+        term.setTextColor(colors.yellow)
+        print("  [Auto-refresh every " .. CONFIG.POLL_INTERVAL .. "s - Press Q to exit]")
+        term.setTextColor(colors.white)
+        
+        -- Wait for either timeout or Q key
+        local timer = os.startTimer(CONFIG.POLL_INTERVAL)
+        
+        while true do
+            local event, param = os.pullEvent()
+            
+            if event == "timer" and param == timer then
+                break  -- Refresh
+            elseif event == "key" and param == keys.q then
+                return true  -- Exit dashboard
+            elseif event == "key" then
+                break  -- Any other key also refreshes
+            end
+        end
+    end
+end
+
+local function cmdAPI()
+    printHeader()
+    print("")
+    print("Testing API connection...")
+    print("")
+    testAPI()
+    waitForKey()
+    return true
+end
+
+local function cmdRSC(args)
+    printHeader()
+    print("")
+    
+    if args and #args > 0 then
+        -- Setting RSC value
+        local value = tonumber(args[1])
+        
+        if not value then
+            term.setTextColor(colors.red)
+            print("[ERROR] Invalid number: " .. args[1])
+            term.setTextColor(colors.white)
+        elseif value < -256 or value > 256 then
+            term.setTextColor(colors.red)
+            print("[ERROR] Value must be between -256 and 256")
+            term.setTextColor(colors.white)
+        else
+            print("Setting RSC target to " .. value .. " RPM...")
+            print("")
+            setTarget("rsc", value)
+        end
+    else
+        -- Showing RSC values
+        local data = getEndpointData("rsc")
+        
+        if data then
+            print("RSC Status:")
+            print("")
+            print(string.format("  Target Speed:  %d RPM", data.target_rsc or 0))
+            print(string.format("  Current Speed: %d RPM", data.current_rsc or 0))
+            
+            local diff = (data.target_rsc or 0) - (data.current_rsc or 0)
+            if math.abs(diff) > 5 then
+                print("")
+                term.setTextColor(colors.yellow)
+                print("  [Ramping - difference: " .. diff .. " RPM]")
+                term.setTextColor(colors.white)
+            end
+        else
+            term.setTextColor(colors.red)
+            print("[ERROR] Could not fetch RSC data")
+            term.setTextColor(colors.white)
+        end
+    end
+    
+    waitForKey()
+    return true
+end
+
+local function cmdRelay(args)
+    printHeader()
+    print("")
+    
+    if args and #args > 0 then
+        -- Setting relay state
+        local state = string.lower(args[1])
+        
+        if state == "on" then
+            print("Turning relay ON...")
+            print("")
+            setTarget("relay", true)
+        elseif state == "off" then
+            print("Turning relay OFF...")
+            print("")
+            setTarget("relay", false)
+        else
+            term.setTextColor(colors.red)
+            print("[ERROR] Relay state must be 'on' or 'off'")
+            term.setTextColor(colors.white)
+        end
+    else
+        -- Showing relay state
+        local data = getEndpointData("relay")
+        
+        if data then
+            local targetStr = data.target_relay and "ON" or "OFF"
+            local currentStr = data.current_relay and "ON" or "OFF"
+            
+            print("Relay Status:")
+            print("")
+            print("  Target State:  " .. targetStr)
+            print("  Current State: " .. currentStr)
+            
+            if data.target_relay ~= data.current_relay then
+                print("")
+                term.setTextColor(colors.yellow)
+                print("  [State mismatch - command pending]")
+                term.setTextColor(colors.white)
+            end
+        else
+            term.setTextColor(colors.red)
+            print("[ERROR] Could not fetch relay data")
+            term.setTextColor(colors.white)
+        end
+    end
+    
+    waitForKey()
+    return true
+end
+
+local function cmdPower()
+    printHeader()
+    print("")
+    
+    local state = getFullState()
+    
+    if state then
+        local battery = state.battery or 0
+        print("Battery Status:")
+        print("")
+        print(string.format("  Stored Energy: %d FE", battery))
+
+        -- Visual bar (assuming max 270,000,000 FE - adjust as needed)
+        local maxEnergy = 270000000
+        local percentage = math.min(100, math.floor((battery / maxEnergy) * 100))
+        local barWidth = 30
+        local filledWidth = math.floor((percentage / 100) * barWidth)
+        
+        print("")
+        local bar = "  [" .. string.rep("=", filledWidth) .. string.rep("-", barWidth - filledWidth) .. "]"
+        print(bar .. " " .. percentage .. "%")
+    else
+        term.setTextColor(colors.red)
+        print("[ERROR] Could not fetch battery data")
+        term.setTextColor(colors.white)
+    end
+    
+    waitForKey()
+    return true
+end
+
+local function cmdStress()
+    printHeader()
+    print("")
+    
+    local state = getFullState()
+    
+    if state then
+        local stress = state.stress or 0
+        print("Stress Level:")
+        print("")
+        print(string.format("  Current Stress: %d SU", stress))
+        
+        -- Warning thresholds (adjust based on your setup)
+        if stress > 900 then
+            term.setTextColor(colors.red)
+            print("")
+            print("  [CRITICAL - Network near capacity!]")
+        elseif stress > 700 then
+            term.setTextColor(colors.yellow)
+            print("")
+            print("  [WARNING - High stress level]")
+        else
+            term.setTextColor(colors.green)
+            print("")
+            print("  [OK - Stress level normal]")
+        end
+        term.setTextColor(colors.white)
+    else
+        term.setTextColor(colors.red)
+        print("[ERROR] Could not fetch stress data")
+        term.setTextColor(colors.white)
+    end
+    
+    waitForKey()
+    return true
+end
+
+-- ============================================
+-- COMMAND PARSER
+-- ============================================
+
+local function parseInput(input)
+    local parts = {}
+    for word in input:gmatch("%S+") do
+        table.insert(parts, word)
+    end
+    
+    local command = string.lower(parts[1] or "")
+    local args = {}
+    
+    for i = 2, #parts do
+        table.insert(args, parts[i])
+    end
+    
+    return command, args
 end
 
 -- ============================================
 -- MAIN CLI LOOP
 -- ============================================
+
 local function mainCLI()
-    -- Print a CLI styled input to the console
-    term.clear()
-    term.setCursorPos(1,1)
-    print("PowerStation Server CLI")
-    print("Type 'help' for a list of commands.")
+    printHeader()
+    
+    -- Show quick status line
+    if apiOnline then
+        term.setTextColor(colors.green)
+        print("  API: Online")
+    else
+        term.setTextColor(colors.red)
+        print("  API: Offline")
+    end
+    term.setTextColor(colors.white)
+    
+    print("")
+    print("Type 'help' for commands, 'status' for state")
+    print("")
     write("> ")
+    
     local input = read()
-
-    -- trim and lowercase the input for easier parsing
-    local command = string.lower(string.gsub(input, "^%s*(.-)%s*$", "%1"))
-
-    if command == "help" then
-        print("Available commands:")
-        print(" help           - Show this help message")
-        print(" API            - Check powerstation API status")
-        print(" exit           - Exit the CLI")
-        print("") --blank line for readability
-        print(" rsc            - Show Rotation Speed Controller value")
-        print(" rsc <value>    - Set Rotation Speed Controller (-256 to 256)")
-        print(" relay          - Show Relay State")
-        print(" relay <on/off> - Set Relay State")
-        print(" power          - Show current energy reserves")
-        print(" stress         - Show current stress level")
-        print("") --blank line for readability
-        print("Press any key to continue...")
-        os.pullEvent("key")
-        return true 
-    end
-
-    if command == "api" then
-        testAPI()
-        print("Press any key to continue...")
-        os.pullEvent("key")
+    local command, args = parseInput(input)
+    
+    -- Empty input
+    if command == "" then
         return true
     end
-
-    if command == "exit" then
-        print("Exiting CLI...")
-        return false
-    end
-
-    -- Now handle commands that control the powerstation
-    -- RSC COMMAND
-    if command :match("^rsc") then
-        local _, _, valueStr = string.find(command, "^rsc%s+(%-?%d+)")
-        local value = tonumber(valueStr)
-        if value then
-            if value < -256 or value > 256 then
-                print("[ERROR] Value must be between -256 and 256")
-            else
-                sendCommandToAPI("set-speed", value)
-            end
-        else
-            local rscValue = getAPIData("rsc")
-            if rscValue then
-                print("Rotation Speed Controller Value: " .. rscValue)
-            end
-        end
-        print("Press any key to continue...")
-        os.pullEvent("key")
+    
+    -- Command dispatch
+    if command == "help" or command == "?" then
+        return cmdHelp()
         
-        return true
-    end
-
-    -- RELAY COMMAND
-    if command :match("^relay") then
-        local _, _, state = string.find(command, "^relay%s+(%a+)")
-        if state then
-            state = string.lower(state)
-            if state == "on" or state == "off" then
-                sendCommandToAPI("set-relay", state)
-            else
-                print("[ERROR] Relay state must be 'on' or 'off'")
-            end
-        else
-            local relayState = getAPIData("relay")
-            if relayState then
-                print("Relay State: " .. relayState)
-            end
-        end
-        print("Press any key to continue...")
-        os.pullEvent("key")
-        return true
-    end
-
-    -- POWER COMMAND
-    if command == "power" then
-        local powerReserves = getAPIData("power")
-        if powerReserves then
-            print("Current Power Reserves: " .. powerReserves .. " FE")
-        end
-        print("Press any key to continue...")
-        os.pullEvent("key")
-        return true
-    end
-
-    -- STRESS COMMAND
-    if command == "stress" then
-        local stressLevel = getAPIData("stress")
-        if stressLevel then
-            print("Current Stress Level: " .. stressLevel .. " SU")
-        end
-        print("Press any key to continue...")
-        os.pullEvent("key")
-        return true
-    end
-
-    if command ~= "" then
+    elseif command == "status" or command == "s" then
+        return cmdStatus()
+        
+    elseif command == "dashboard" or command == "d" then
+        return cmdDashboard()
+        
+    elseif command == "api" then
+        return cmdAPI()
+        
+    elseif command == "exit" or command == "quit" or command == "q" then
+        print("Exiting...")
+        return false
+        
+    elseif command == "rsc" then
+        return cmdRSC(args)
+        
+    elseif command == "relay" then
+        return cmdRelay(args)
+        
+    elseif command == "power" or command == "battery" then
+        return cmdPower()
+        
+    elseif command == "stress" then
+        return cmdStress()
+        
+    else
+        printHeader()
+        print("")
+        term.setTextColor(colors.red)
         print("[ERROR] Unknown command: " .. command)
-        print("Type 'help' for a list of commands.")
-        print("Press any key to continue...")
-        os.pullEvent("key")
+        term.setTextColor(colors.white)
+        print("")
+        print("Type 'help' for available commands.")
+        waitForKey()
         return true
     end
 end
 
--- Entry Point
-local shouldContinue = true
---findMonitor() -- setup monitor (NOT USED YET)
+-- ============================================
+-- ENTRY POINT
+-- ============================================
+
+print("Initializing PowerStation Server...")
+print("")
+
+-- Optional monitor setup
+findMonitor()
+
+-- Test API connection
 if testAPI() then
-    while shouldContinue do
-        shouldContinue = mainCLI()
+    print("")
+    print("Starting CLI...")
+    sleep(1)
+    
+    local running = true
+    while running do
+        local success, result = pcall(mainCLI)
+        
+        if success then
+            running = result
+        else
+            -- Handle errors gracefully
+            term.setTextColor(colors.red)
+            print("[ERROR] " .. tostring(result))
+            term.setTextColor(colors.white)
+            print("Restarting CLI in 3 seconds...")
+            sleep(3)
+            testAPI()  -- Re-check API status
+        end
     end
 else
-    error("[FATAL] Cannot start CLI, API is offline.")
+    print("")
+    term.setTextColor(colors.red)
+    print("[FATAL] Cannot start - API is offline")
+    print("Check your network connection and API server")
+    term.setTextColor(colors.white)
 end

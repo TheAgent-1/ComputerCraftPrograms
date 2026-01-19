@@ -95,10 +95,7 @@ local function applyState(state)
     -- RSC WORKER
     if CONFIG.CLIENT_TYPE == "RSC" then
         if state.rotationSpeedController ~= nil then
-            peripheralDevice0.setTargetSpeed(
-                CONFIG.DIGITAL_ADAPTER_SIDE,
-                state.rotationSpeedController
-            )
+            --peripheralDevice0.setTargetSpeed(CONFIG.DIGITAL_ADAPTER_SIDE,state.rotationSpeedController)
             print("RSC set to", state.rotationSpeedController)
         end
 
