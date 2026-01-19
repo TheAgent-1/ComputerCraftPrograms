@@ -9,8 +9,8 @@
 -- CONFIGURATION
 -- ============================================
 local CONFIG = {
-    API_COMMAND_URL = "http://croul.duckdns.org:5005/sg-command",
-    API_STATUS_URL = "http://croul.duckdns.org:5005/sg-status/api",  -- NEW!
+    API_COMMAND_URL = "http://croul.duckdns.org:5005/stargate/api",  -- CHANGED!
+    API_STATUS_URL = "http://croul.duckdns.org:5005/stargate/api/status",  -- NEW!
     LOGIN_CODE = "1234",  -- Change this!
     DEVICE_NAME = "Remote DHD",
     FORCE_RUN = false  -- Set to true to allow running off a Pocket Computer for testing
