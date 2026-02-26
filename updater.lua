@@ -38,6 +38,7 @@ local stargate_manual_url = root_url .. "Stargate/GateDialManual.lua"
 local stargate_full_url = root_url .. "Stargate/GateDialFull.lua"
 local stargate_remotedhd_url = root_url .. "Stargate/RemoteDHD.lua"
 local stargate_register_url = root_url .. "Stargate/GateRegister.lua"
+local stargate_fullWS_url = root_url .. "Stargate/GateDialFull-WS.lua"
 local stargate_readme_url = root_url .. "Stargate/ReadMe.txt"
 
 --Powerstation--
