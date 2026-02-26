@@ -7,6 +7,7 @@
 -- The program is written in Lua and uses the ComputerCraft API for file handling and terminal input/output.
 -- This program is free software: you can redistribute it and/or modify it under the terms of the MIT License.
 
+-- The full URL for the updater: http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/updater.lua
 
 ---=====================================
 -- URL Definitions
@@ -206,10 +207,14 @@ local function StargateInstall() --Handles installing the Stargate program
         downloadFile(stargate_readme_url, "Stargate_Readme.txt")
         print("Run 'edit Stargate_Readme.txt' to view the Readme")
     elseif choice == "5" then
+        downloadFile(stargate_fullWS_url, "GateDialFull-WS.lua")
+        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
+        print("Run 'edit Stargate_Readme.txt' to view the Readme")
+    elseif choice == "6" then
         downloadFile(stargate_remotedhd_url, "RemoteDHD.lua")
         --downloadFile(stargate_readme_url, "Stargate_Readme.txt")
         --print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "6" then
+    elseif choice == "7" then
         downloadFile(stargate_register_url, "GateRegister.lua")
     else
         print("Invalid option. Exiting.")
