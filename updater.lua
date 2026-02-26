@@ -12,7 +12,7 @@
 -- URL Definitions
 --=====================================
 --Root URL for the repositories--
-local root_url = "http://croul.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/"
+local root_url = "http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/"
 
 --Self Update--
 local updater_url = root_url .. "updater.lua"
