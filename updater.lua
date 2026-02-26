@@ -185,8 +185,9 @@ local function StargateInstall() --Handles installing the Stargate program
     print("2 - GateDialAuto")
     print("3 - GateDialManual")
     print("4 - GateDialFull (Recommended)")
-    print("5 - RemoteDHD (Only for Portable Devices)")
-    print("6 - GateRegister")
+    print("5 - GateDialFull-WS (WebSocket version)")
+    print("6 - RemoteDHD (Only for Portable Devices)")
+    print("7 - GateRegister")
     write("Select an option: ")
 
     local choice = getInput()
