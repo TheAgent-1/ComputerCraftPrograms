@@ -48,6 +48,9 @@ local powerstationclient_url = root_url .. "Powerstation/Powerstation_Client.lua
 local ps_server_url = root_url .. "Powerstation/PS_Server_test.lua"
 local ps_client_url = root_url .. "Powerstation/PS_Client_test.lua"
 
+--ToDo--
+local todo_url = root_url .. "ToDo/ToDo.lua"
+
 
 --=====================================
 -- Utility Functions
@@ -246,6 +249,13 @@ local function PowerstationInstall() --Handles installing the Powerstation progr
     end
 end
 
+local function ToDoInstall() --Handles installing the ToDo program
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Installing ToDo...")
+    downloadFile(root_url .. "ToDo/ToDo.lua", "ToDo.lua")
+end
+
 --=====================================
 -- Main Loop
 --=====================================
@@ -263,6 +273,7 @@ local function main() --Handles main screen
     print("4 - Install External Mail System")
     print("5 - Install Stargate")
     print("6 - Powerstation")
+    print("7. Install ToDo")
     write("Select an option: ")
     local choice = getInput()
     if choice == "0" then
@@ -283,6 +294,8 @@ local function main() --Handles main screen
         StargateInstall()
     elseif choice == "6" then
         PowerstationInstall()
+    elseif choice == "7" then
+        ToDoInstall()
     else
         print("Invalid option. Exiting.")
     end
