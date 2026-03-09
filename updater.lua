@@ -9,7 +9,7 @@
 
 -- The full URL for the updater: http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/updater.lua
 
----=====================================
+--=====================================
 -- URL Definitions
 --=====================================
 --Root URL for the repositories--
@@ -50,6 +50,10 @@ local ps_client_url = root_url .. "Powerstation/PS_Client_test.lua"
 
 --ToDo--
 local todo_url = root_url .. "ToDo/ToDo.lua"
+
+--BaseOS--
+-- BaseOS is a set of multiple files so it needs a secondary installer to download all the necessary files
+local baseos_url = root_url .. "BaseOS/BaseOS_Installer.lua"
 
 
 --=====================================
@@ -256,6 +260,13 @@ local function ToDoInstall() --Handles installing the ToDo program
     downloadFile(root_url .. "ToDo/ToDo.lua", "ToDo.lua")
 end
 
+local function BaseOSInstall() --Handles installing BaseOS
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Installing BaseOS...")
+    downloadFile(baseos_url, "BaseOS_Installer.lua")
+end
+
 --=====================================
 -- Main Loop
 --=====================================
@@ -272,8 +283,9 @@ local function main() --Handles main screen
     print("3 - Install TicTacToe (Broken)")
     print("4 - Install External Mail System")
     print("5 - Install Stargate")
-    print("6 - Powerstation")
-    print("7. Install ToDo")
+    print("6 - Install Powerstation")
+    print("7 - Install ToDo")
+    print("8 - Install BaseOS")
     write("Select an option: ")
     local choice = getInput()
     if choice == "0" then
@@ -296,6 +308,8 @@ local function main() --Handles main screen
         PowerstationInstall()
     elseif choice == "7" then
         ToDoInstall()
+    elseif choice == "8" then
+        BaseOSInstall()
     else
         print("Invalid option. Exiting.")
     end
