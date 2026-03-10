@@ -177,6 +177,15 @@ function GateDial.main(win)
         }
     end
 
+    -- Cleanly close the WS connection and nil the reference
+    local function wsDisconnect(reason)
+        if wsConnection then
+            pcall(wsConnection.close, wsConnection)
+            wsConnection = nil
+            if reason then log("WS: " .. reason, colors.orange) end
+        end
+    end
+
     local function reportStatus()
         local p = buildStatusPayload()
         if wsConnection then
@@ -187,7 +196,9 @@ function GateDial.main(win)
             })
             local ok = pcall(wsConnection.send, wsConnection, payload)
             if ok then return end
-            wsConnection = nil
+            -- Send failed — close properly before falling back to HTTP
+            wsDisconnect("send failed, falling back to HTTP")
+            wsReconnectTimer = os.startTimer(10)
         end
         local qs = string.format(
             "?gate=%s&address=%s&dialed_address=%s&status=%s&iris=%s&locked_chevrons=%d",
@@ -438,7 +449,7 @@ function GateDial.main(win)
 
     -- ── WS connection ──────────────────────────────────────────────
     local function connectWS()
-        if wsConnection then pcall(wsConnection.close, wsConnection); wsConnection = nil end
+        wsDisconnect()  -- always cleanly close any existing connection first
         local ws, err = http.websocket(CONFIG.WS_URL .. CONFIG.STARGATE_NAME)
         if ws then
             wsConnection = ws
@@ -658,8 +669,7 @@ function GateDial.main(win)
             end
 
         elseif ev == "websocket_closed" or ev == "websocket_failure" then
-            wsConnection = nil
-            log("WS: Lost, retry in 10s", colors.orange)
+            wsDisconnect("Lost, retry in 10s")
             wsReconnectTimer = os.startTimer(10)
             if currentScreen == "main" then render() end
         end
