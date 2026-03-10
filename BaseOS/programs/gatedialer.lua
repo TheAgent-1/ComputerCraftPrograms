@@ -277,7 +277,7 @@ function GateDial.main(win)
         if not gState.hasIris then log("No iris", colors.red); return end
         if gState.irisProgress == 0 then log("Already open", colors.yellow); return end
         if hasMethod(interface,"openIris") then
-            local ok, err = pcall(interface.openIris, interface)
+            local ok, err = pcall(interface.openIris)
             if ok then log("IRIS OPENING", colors.lime); reportStatus()
             else log("Error: " .. tostring(err), colors.red) end
         end
@@ -287,7 +287,7 @@ function GateDial.main(win)
         if not gState.hasIris then log("No iris", colors.red); return end
         if gState.irisProgress == 58 then log("Already closed", colors.yellow); return end
         if hasMethod(interface,"closeIris") then
-            local ok, err = pcall(interface.closeIris, interface)
+            local ok, err = pcall(interface.closeIris)
             if ok then log("IRIS CLOSING", colors.red); reportStatus()
             else log("Error: " .. tostring(err), colors.red) end
         end
@@ -298,7 +298,7 @@ function GateDial.main(win)
         local disc = hasMethod(interface,"disconnectStargate") and "disconnectStargate"
                   or hasMethod(interface,"disconnect") and "disconnect"
         if disc then
-            interface[disc](interface)
+            interface[disc]()
             log("DISCONNECTING", colors.orange)
             for i = 1, 9 do gState.chevrons[i] = false end
             reportStatus()
@@ -318,7 +318,7 @@ function GateDial.main(win)
 
         if not method then
             if hasMethod(interface,"dialAddress") then
-                interface.dialAddress(interface, address)
+                interface.dialAddress(address)
                 gState.dialing = false; reportStatus(); return true
             end
             log("No crystal dial method!", colors.red)
@@ -328,7 +328,7 @@ function GateDial.main(win)
         for i, symbol in ipairs(address) do
             if i > 9 then break end
             log("Chevron " .. i .. " -> " .. symbol, colors.lightBlue)
-            local ok, err = pcall(interface[method], interface, symbol)
+            local ok, err = pcall(interface[method], symbol)
             if not ok then
                 log("Error: " .. tostring(err), colors.red)
                 gState.dialing = false; return false
@@ -364,16 +364,16 @@ function GateDial.main(win)
             log("=== Chevron " .. i .. " ===", colors.yellow)
 
             if direction == "clockwise" and hasMethod(interface,"rotateClockwise") then
-                interface.rotateClockwise(interface, symbol)
+                interface.rotateClockwise(symbol)
             elseif hasMethod(interface,"rotateAntiClockwise") then
-                interface.rotateAntiClockwise(interface, symbol)
+                interface.rotateAntiClockwise(symbol)
             else
                 log("No rotation method!", colors.red)
                 gState.dialing = false; return false
             end
 
             local waited = 0
-            while not interface.isCurrentSymbol(interface, symbol) and waited < 10 do
+            while not interface.isCurrentSymbol(symbol) and waited < 10 do
                 os.sleep(0.1); waited = waited + 0.1
                 if gState.incoming then
                     log("INCOMING - ABORT", colors.red)
@@ -385,16 +385,16 @@ function GateDial.main(win)
                 gState.dialing = false; return false
             end
 
-            local ok1 = pcall(interface.openChevron, interface)
+            local ok1 = pcall(interface.openChevron)
             if not ok1 then log("openChevron failed", colors.red); gState.dialing = false; return false end
             os.sleep(1)
-            local ok2 = pcall(interface.encodeChevron, interface)
+            local ok2 = pcall(interface.encodeChevron)
             if not ok2 then log("encodeChevron failed", colors.red); gState.dialing = false; return false end
             os.sleep(0.2)
 
             if hasMethod(interface,"isChevronOpen") and hasMethod(interface,"closeChevron") then
-                if interface.isChevronOpen(interface) then
-                    pcall(interface.closeChevron, interface)
+                if interface.isChevronOpen() then
+                    pcall(interface.closeChevron)
                 end
             end
 
