@@ -7,8 +7,8 @@
 local Powerstation = {}
 
 local CONFIG = {
-    API_URL    = "http://192.168.1.40:5005/powerstation/api",
-    STATUS_URL = "http://192.168.1.40:5005/powerstation/api/status",
+    API_URL    = "http://192.168.1.41:5005/powerstation/api",
+    STATUS_URL = "http://192.168.1.41:5005/powerstation/api/status",
     POLL_EVERY = 3,  -- seconds between auto-refresh
 }
 
