@@ -120,7 +120,7 @@ function Powerstation.main(win)
         win.setCursorPos(bx, h)
         win.setBackgroundColor(colors.gray)
         win.setTextColor(colors.lightGray)
-        win.write("  Last: " .. os.date and os.date("%H:%M:%S") or "?")
+        win.write("  Last: " .. (os.date and os.date("%H:%M:%S") or "?"))
     end
 
     -- ── Boot ────────────────────────────────────────────────
