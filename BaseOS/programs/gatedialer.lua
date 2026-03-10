@@ -591,8 +591,42 @@ function GateDial.main(win)
     end
 
     detectGateInfo()
+
+    -- Show a boot splash so the user knows something is happening
+    win.setBackgroundColor(colors.black); win.clear()
+    wWrite(2, 2, "GateDial v5.0 (WS)",   colors.cyan,      colors.black)
+    wWrite(2, 3, "Gate: " .. CONFIG.STARGATE_NAME, colors.white, colors.black)
+    wWrite(2, 4, "Type: " .. interfaceType,        colors.lightGray, colors.black)
+
+    -- Step 1: HTTP registration (explicit, with visible feedback)
+    -- The server must receive this POST before it will accept our WS handshake.
+    wWrite(2, 6, "Registering with API\x85", colors.yellow, colors.black)
+    local p = buildStatusPayload()
+    local qs = string.format(
+        "?gate=%s&address=%s&dialed_address=%s&status=%s&iris=%s&locked_chevrons=%d",
+        textutils.urlEncode(p.gate), textutils.urlEncode(p.address),
+        textutils.urlEncode(p.dialed_address), textutils.urlEncode(p.status),
+        textutils.urlEncode(p.iris), p.locked_chevrons)
+    local regOk, regResp = pcall(http.post, CONFIG.API_STATUS_URL .. qs, "")
+    if regOk and regResp then
+        regResp.close()
+        wWrite(2, 6, "Registered OK          ", colors.lime, colors.black)
+        log("HTTP registration OK", colors.lime)
+    else
+        wWrite(2, 6, "Registration failed!   ", colors.red, colors.black)
+        log("HTTP registration failed: " .. tostring(regResp), colors.red)
+    end
+
+    -- Step 2: Fetch destinations
+    wWrite(2, 7, "Fetching gate network\x85", colors.yellow, colors.black)
     fetchDestinations()
-    reportStatus()
+    wWrite(2, 7, "Network synced         ", colors.lime, colors.black)
+
+    -- Step 3: Wait for server to set up the WS endpoint, exactly like original selfCheck()
+    wWrite(2, 9, "Connecting WS in 2s\x85", colors.lightGray, colors.black)
+    os.sleep(2)
+
+    -- Step 4: Connect WS
     connectWS()
     pollTimer = os.startTimer(CONFIG.POLL_INTERVAL)
     render()
