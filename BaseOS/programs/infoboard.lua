@@ -25,7 +25,7 @@
 
 local InfoBoard = {}
 
--- --- Config ------------------------------------------------------------------
+-- Config
 local CONFIG = {
     SERVER        = "192.168.1.41:5005",
     COMPANY_NAME  = "Spectre Inc.",
@@ -36,7 +36,7 @@ local CONFIG = {
     FADE_DELAY    = 0.02, -- seconds between fade frames
 }
 
--- --- HTTP helper -------------------------------------------------------------
+-- HTTP helper
 local function httpGet(url)
     local ok, resp = pcall(http.get, url)
     if not ok or not resp then return nil end
@@ -45,14 +45,14 @@ local function httpGet(url)
     return pOk and data or nil
 end
 
--- --- main(win) ---------------------------------------------------------------
+-- main(win)
 function InfoBoard.main(win)
     local sw, sh = win.getSize()   -- BaseOS status panel dimensions
 
-    -- -- Find the Display Link --------------------------------------
+    -- Find the Display Link 
     local display = peripheral.find("Create_DisplayLink")
 
-    -- -- Status panel helpers (BaseOS content window) ---------------
+    -- Status panel helpers (BaseOS content window) 
     local function sWrite(x, y, text, fg, bg)
         win.setCursorPos(x, y)
         if bg then win.setBackgroundColor(bg) end
@@ -101,53 +101,52 @@ function InfoBoard.main(win)
         sWrite(2, sh, "Touch to skip page", colors.lightGray, colors.gray)
     end
 
-    -- -- Display Link helpers ---------------------------------------
-    local dw, dh = 51, 19  -- fallback; overwritten once display is found
-    local dwin   = nil     -- window wrapping the display
+    -- Display Link helpers 
+    -- The Create_DisplayLink does not support window.create() because
+    -- it lacks getPaletteColour. We write directly to the peripheral.
+    local dw, dh = 51, 19  -- fallback; overwritten by setupDisplay
 
     local function setupDisplay()
         if not display then return false end
         dw, dh = display.getSize()
-        -- Create a full-surface window on the display
-        dwin = window.create(display, 1, 1, dw, dh, true)
         return true
     end
 
     local function dWrite(x, y, text, fg, bg)
-        if not dwin then return end
+        if not display then return end
         if y < 1 or y > dh then return end
-        dwin.setCursorPos(x, y)
-        if bg then dwin.setBackgroundColor(bg) end
-        if fg then dwin.setTextColor(fg) end
-        dwin.write(tostring(text):sub(1, dw - x + 1))
+        display.setCursorPos(x, y)
+        if bg then display.setBackgroundColor(bg) end
+        if fg then display.setTextColor(fg) end
+        display.write(tostring(text):sub(1, dw - x + 1))
     end
 
     local function dFill(y, bg, char)
-        if not dwin then return end
+        if not display then return end
         if y < 1 or y > dh then return end
-        dwin.setCursorPos(1, y)
-        dwin.setBackgroundColor(bg)
-        dwin.write(string.rep(char or " ", dw))
+        display.setCursorPos(1, y)
+        display.setBackgroundColor(bg)
+        display.write(string.rep(char or " ", dw))
     end
 
     local function dProgressBar(x, y, barW, val, maxVal, fg, bg)
-        if not dwin then return end
+        if not display then return end
         val    = val    or 0
         maxVal = (maxVal and maxVal > 0) and maxVal or 1
         local filled = math.floor(barW * math.min(val / maxVal, 1))
-        dwin.setCursorPos(x, y)
-        dwin.setBackgroundColor(fg); dwin.write(string.rep("\x7f", filled))
-        dwin.setBackgroundColor(bg); dwin.write(string.rep("-", barW - filled))
-        dwin.setBackgroundColor(colors.black)
+        display.setCursorPos(x, y)
+        display.setBackgroundColor(fg); display.write(string.rep("\x7f", filled))
+        display.setBackgroundColor(bg); display.write(string.rep("-", barW - filled))
+        display.setBackgroundColor(colors.black)
     end
 
     local function pushDisplay()
         if display then display.update() end
     end
 
-    -- -- Page header on the display (row 1) ------------------------
+    -- Page header on the display (row 1) 
     local function drawDisplayHeader(label, idx, total)
-        if not dwin then return end
+        if not display then return end
         dFill(1, colors.gray)
         local pageNum = idx .. "/" .. total
         dWrite(2, 1, CONFIG.COMPANY_NAME, colors.white, colors.gray)
@@ -157,9 +156,9 @@ function InfoBoard.main(win)
         dWrite(dw - #pageNum, 1, pageNum, colors.white, colors.gray)
     end
 
-    -- -- Fade transition --------------------------------------------
+    -- Fade transition 
     local function fadeOut()
-        if not dwin then return end
+        if not display then return end
         local row = dh
         while row >= 2 do
             for i = 0, CONFIG.FADE_STEPS - 1 do
@@ -172,7 +171,7 @@ function InfoBoard.main(win)
         end
     end
 
-    -- -- Page renderers ---------------------------------------------
+    -- Page renderers 
     -- Each receives the page's `data` field and draws into rows 2..dh.
 
     local function renderAnnouncements(data)
@@ -323,9 +322,9 @@ function InfoBoard.main(win)
     }
 
     local function renderPage(page, idx, total)
-        if not dwin then return end
-        dwin.setBackgroundColor(colors.black)
-        dwin.clear()
+        if not display then return end
+        display.setBackgroundColor(colors.black)
+        display.clear()
         drawDisplayHeader(page.label or "?", idx, total)
 
         local renderer = renderers[page.type]
@@ -338,7 +337,7 @@ function InfoBoard.main(win)
         pushDisplay()
     end
 
-    -- -- Page list management ---------------------------------------
+    -- Page list management 
     local pages       = {}
     local lastRefresh = 0
 
@@ -352,7 +351,7 @@ function InfoBoard.main(win)
         return false
     end
 
-    -- -- WS connection ----------------------------------------------
+    -- WS connection 
     local wsConnection  = nil
     local wsReconTimer  = nil
 
@@ -373,7 +372,7 @@ function InfoBoard.main(win)
         end
     end
 
-    -- -- State for status panel -------------------------------------
+    -- State for status panel 
     local function panelState(pageIdx, wsConn)
         local page = pages[pageIdx]
         return {
@@ -387,7 +386,7 @@ function InfoBoard.main(win)
         }
     end
 
-    -- -- Boot -------------------------------------------------------
+    -- Boot 
     if not setupDisplay() then
         win.setBackgroundColor(colors.red); win.clear()
         win.setCursorPos(2,2)
@@ -400,7 +399,7 @@ function InfoBoard.main(win)
     end
 
     -- Show boot message on the display board
-    dwin.setBackgroundColor(colors.black); dwin.clear()
+    display.setBackgroundColor(colors.black); display.clear()
     dFill(1, colors.gray)
     dWrite(2, 1, CONFIG.COMPANY_NAME, colors.white, colors.gray)
     dWrite(2, 3, "Connecting\x85", colors.yellow, colors.black)
@@ -420,7 +419,7 @@ function InfoBoard.main(win)
     if #pages > 0 then
         renderPage(pages[pageIndex], pageIndex, #pages)
     else
-        dwin.setBackgroundColor(colors.black); dwin.clear()
+        display.setBackgroundColor(colors.black); display.clear()
         dFill(1, colors.gray)
         dWrite(2, 1, CONFIG.COMPANY_NAME, colors.white, colors.gray)
         dWrite(2, 3, "No pages configured.", colors.gray, colors.black)
@@ -428,11 +427,11 @@ function InfoBoard.main(win)
         pushDisplay()
     end
 
-    -- -- Event loop -------------------------------------------------
+    -- Event loop 
     while true do
         local ev, p1, p2, p3 = os.pullEvent()
 
-        -- -- Page flip timer --------------------------------------
+        -- Page flip timer 
         if ev == "timer" and p1 == flipTimer then
             if #pages > 0 then
                 -- Advance page
@@ -457,12 +456,12 @@ function InfoBoard.main(win)
                 drawStatusPanel(panelState(pageIndex, wsConnection))
             end
 
-        -- -- WS reconnect timer -----------------------------------
+        -- WS reconnect timer 
         elseif ev == "timer" and p1 == wsReconTimer then
             connectWS()
             drawStatusPanel(panelState(pageIndex, wsConnection))
 
-        -- -- WS message — server pushed an update -----------------
+        -- WS message — server pushed an update 
         elseif ev == "websocket_message" then
             local ok, msg = pcall(textutils.unserialiseJSON, p2 or "")
             if ok and msg then
@@ -507,13 +506,13 @@ function InfoBoard.main(win)
                 end
             end
 
-        -- -- WS dropped -------------------------------------------
+        -- WS dropped 
         elseif ev == "websocket_closed" or ev == "websocket_failure" then
             wsDisconnect()
             wsReconTimer = os.startTimer(10)
             drawStatusPanel(panelState(pageIndex, wsConnection))
 
-        -- -- Touch on BaseOS panel — skip to next page -------------
+        -- Touch on BaseOS panel — skip to next page 
         elseif ev == "monitor_touch" then
             if #pages > 0 then
                 os.cancelTimer(flipTimer)
