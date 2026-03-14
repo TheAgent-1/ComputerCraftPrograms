@@ -69,7 +69,7 @@ function Powerstation.main(win)
             return
         end
 
-        -- ── Relay status ──
+        -- -- Relay status --
         local relayOn  = state.relayState == "on"
         local relayCol = relayOn and colors.lime or colors.red
         local relayStr = relayOn and "ON" or "OFF"
@@ -83,7 +83,7 @@ function Powerstation.main(win)
                             action = relayOn and "set-relay:off" or "set-relay:on" }
         drawBtn(win, 2, 3, toggleLabel, colors.black, toggleCol)
 
-        -- ── RSC speed ──
+        -- -- RSC speed --
         local rsc = state.rotationSpeedController or 0
         wWrite(win, 2, 5, "RSC Speed: " .. rsc .. " RPM", colors.white, colors.black)
 
@@ -99,14 +99,14 @@ function Powerstation.main(win)
             sx = drawBtn(win, sx, 6, lbl, fg, bg)
         end
 
-        -- ── Stress level ──
+        -- -- Stress level --
         local stress = state.stressLevel or 0
         wWrite(win, 2, 8, "Network Stress:", colors.lightGray, colors.black)
         local stressCol = stress > 80 and colors.red or (stress > 50 and colors.orange or colors.lime)
         drawBar(win, 2, 9, math.floor(w * 0.6), stress, 100, stressCol, colors.gray)
         wWrite(win, math.floor(w * 0.6) + 4, 9, stress .. "%", stressCol, colors.black)
 
-        -- ── Power reserves ──
+        -- -- Power reserves --
         local reserves = state.powerReserves or 0
         wWrite(win, 2, 11, "Power Reserves:", colors.lightGray, colors.black)
         local resMax = state.maxPowerReserves or math.max(reserves, 100000)
@@ -114,7 +114,7 @@ function Powerstation.main(win)
         local resPct = math.floor((reserves / resMax) * 100)
         wWrite(win, math.floor(w * 0.6) + 4, 12, resPct .. "%", colors.cyan, colors.black)
 
-        -- ── Refresh button ──
+        -- -- Refresh button --
         btns[#btns + 1] = { x1 = 2, x2 = 14, y = h, action = "refresh" }
         local bx = drawBtn(win, 2, h, "\x1d Refresh", colors.white, colors.gray)
         win.setCursorPos(bx, h)
@@ -123,10 +123,10 @@ function Powerstation.main(win)
         win.write("  Last: " .. (os.date and os.date("%H:%M:%S") or "?"))
     end
 
-    -- ── Boot ────────────────────────────────────────────────
+    -- -- Boot ------------------------------------------------
     draw()
 
-    -- ── Event loop ──────────────────────────────────────────
+    -- -- Event loop ------------------------------------------
     while true do
         -- Auto-poll via timer
         if os.clock() - lastPoll > CONFIG.POLL_EVERY then

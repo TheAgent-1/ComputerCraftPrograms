@@ -1,120 +1,107 @@
--- This Program is used to install BaseOS on a ComputerCraft Computer.
--- It will download all the necessary files and place them in the correct directories.
+-- ============================================================================
+-- BaseOS Installer
+-- Downloads and installs all BaseOS files from Gitea.
+-- To add a new program: add one entry to the PROGRAMS table. That's it.
+-- ============================================================================
 
---=====================================
--- URL Definitions
---=====================================
---Root URL for the files--
-local root_url = "http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/BaseOS/"
+local ROOT = "http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/BaseOS/"
 
--- Core
-local kernel_url = root_url .. "kernel.lua"
-local registry_url = root_url .. "registry.lua"
+-- --- Core files (always installed) -------------------------------------------
+local CORE = {
+    { url = ROOT .. "kernel.lua",   dest = "kernel.lua"   },
+    { url = ROOT .. "registry.lua", dest = "registry.lua" },
+}
 
--- Programs
-local gatedialer_url = root_url .. "programs/gatedialer.lua"
-local powerstation_url = root_url .. "programs/powerstation.lua"
-local todo_url = root_url .. "programs/todo.lua"
+-- --- Programs (installed into /programs/) ------------------------------------
+-- To add a new program, just add a line here.
+local PROGRAMS = {
+    "gatedialer",
+    "powerstation",
+    "todo",
+    "infoboard",
+}
 
+-- --- Download helper ----------------------------------------------------------
+local function downloadFile(url, dest)
+    io.write("  " .. dest .. "... ")
 
---=====================================
--- Functions
---=====================================
-local function downloadFile(url, filename) --Handles downloading the selected file
-    local ok, response = pcall(http.get, url)
-    if not ok or not response then
-        print("Failed to download " .. filename)
+    local ok, resp = pcall(http.get, url)
+    if not ok or not resp then
+        print("FAILED (no response)")
         return false
     end
-    local status
-    if response.getResponseCode then
-        status = response.getResponseCode()
-    end
-    local content = response.readAll()
-    response.close()
+
+    local status = resp.getResponseCode and resp.getResponseCode()
+    local content = resp.readAll()
+    resp.close()
+
     if status and (status < 200 or status >= 300) then
-        print("HTTP error " .. tostring(status) .. " for " .. filename)
+        print("FAILED (HTTP " .. tostring(status) .. ")")
         return false
     end
-    local tmpName = filename .. ".tmp"
-    local okWrite, err = pcall(function()
-        local file = fs.open(tmpName, "w")
-        file.write(content)
-        file.close()
+
+    local tmp = dest .. ".tmp"
+    local writeOk = pcall(function()
+        local f = fs.open(tmp, "w")
+        f.write(content)
+        f.close()
     end)
-    if not okWrite then
-        print("Failed to write file: " .. tostring(err))
-        if fs.exists(tmpName) then fs.delete(tmpName) end
+
+    if not writeOk then
+        print("FAILED (write error)")
+        if fs.exists(tmp) then fs.delete(tmp) end
         return false
     end
-    if fs.exists(filename) then fs.delete(filename) end
-    local movedOk, moveErr = pcall(function() fs.move(tmpName, filename) end)
-    if not movedOk then
-        print("Failed to finalize download: " .. tostring(moveErr))
-        if fs.exists(tmpName) then fs.delete(tmpName) end
+
+    if fs.exists(dest) then fs.delete(dest) end
+    local moveOk = pcall(fs.move, tmp, dest)
+    if not moveOk then
+        print("FAILED (move error)")
+        if fs.exists(tmp) then fs.delete(tmp) end
         return false
     end
-    print(filename .. " downloaded successfully.")
+
+    print("OK")
     return true
 end
 
-local function KernelInstall() --Handles installing the kernel
+-- --- Installer ---------------------------------------------------------------
+local function install()
     term.clear()
     term.setCursorPos(1, 1)
-    print("Installing BaseOS Kernel...")
-    downloadFile(kernel_url, "kernel.lua")
-end
+    print("BaseOS Installer")
+    print(string.rep("=", 24))
 
-local function RegistryInstall() --Handles installing the registry
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing BaseOS Registry...")
-    downloadFile(registry_url, "registry.lua")
-end
+    local failed = 0
 
-local function CreateProgramDir() --Creates the programs directory if it doesn't exist
-    if not fs.exists("programs") then
-        fs.makeDir("programs")
+    -- Core files
+    print("\nCore:")
+    for _, f in ipairs(CORE) do
+        if not downloadFile(f.url, f.dest) then
+            failed = failed + 1
+        end
+    end
+
+    -- Programs
+    print("\nPrograms:")
+    if not fs.exists("programs") then fs.makeDir("programs") end
+    for _, name in ipairs(PROGRAMS) do
+        local url  = ROOT .. "programs/" .. name .. ".lua"
+        local dest = "programs/" .. name .. ".lua"
+        if not downloadFile(url, dest) then
+            failed = failed + 1
+        end
+    end
+
+    -- Summary
+    print(string.rep("=", 24))
+    if failed == 0 then
+        print("All files installed!")
+        print("Run kernel.lua to start BaseOS.")
+    else
+        print(failed .. " file(s) failed.")
+        print("Check your connection and retry.")
     end
 end
 
--- ++++++++++++++++++++++++++++++++++++
--- Program Installers
--- Each program has its own installer function that handles downloading the necessary file(s) for that program
--- ++++++++++++++++++++++++++++++++++++
-local function GateDialerInstall() --Handles installing the GateDialer program
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing GateDialer...")
-    downloadFile(gatedialer_url, "programs/gatedialer.lua")
-end
-
-local function PowerstationInstall() --Handles installing the Powerstation program
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing Powerstation...")
-    downloadFile(powerstation_url, "programs/powerstation.lua")
-end
-
-local function ToDoInstall() --Handles installing the ToDo program
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing ToDo...")
-    downloadFile(todo_url, "programs/todo.lua")
-end
-
--- ++++++++++++++++++++++++++++++++++++
--- BaseOS Installer
--- This function handles installing all of BaseOS by calling the individual installer functions for the kernel, registry, and programs.
--- ++++++++++++++++++++++++++++++++++++
-local function BaseOSInstall() --Handles installing all of BaseOS
-    CreateProgramDir()
-    KernelInstall()
-    RegistryInstall()
-    GateDialerInstall()
-    PowerstationInstall()
-    ToDoInstall()
-end
-
-
-BaseOSInstall() --Run the installer
+install()

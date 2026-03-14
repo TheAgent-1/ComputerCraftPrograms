@@ -11,7 +11,7 @@
 
 local GateDial = {}
 
--- ─── Config ──────────────────────────────────────────────────────────────────
+-- --- Config ------------------------------------------------------------------
 local CONFIG = {
     STARGATE_NAME    = "Earth",
     STARGATE_ADDRESS = {1, 2, 3, 4, 5, 6, 0},
@@ -23,16 +23,16 @@ local CONFIG = {
     DEBUG_MODE       = false,
 }
 
--- ─── Helpers ─────────────────────────────────────────────────────────────────
+-- --- Helpers -----------------------------------------------------------------
 local function hasMethod(obj, name)
     return obj ~= nil and type(obj[name]) == "function"
 end
 
--- ─── main(win) ───────────────────────────────────────────────────────────────
+-- --- main(win) ---------------------------------------------------------------
 function GateDial.main(win)
     local w, h = win.getSize()
 
-    -- ── State ──────────────────────────────────────────────────────
+    -- -- State ------------------------------------------------------
     local interface     = nil
     local interfaceType = "Unknown"
 
@@ -59,7 +59,7 @@ function GateDial.main(win)
     local pollTimer             = nil
     local wsReconnectTimer      = nil
 
-    -- ── Window helpers ─────────────────────────────────────────────
+    -- -- Window helpers ---------------------------------------------
     local function wWrite(x, y, text, fg, bg)
         win.setCursorPos(x, y)
         if bg then win.setBackgroundColor(bg) end
@@ -95,7 +95,7 @@ function GateDial.main(win)
         win.setBackgroundColor(colors.black)
     end
 
-    -- ── Event log ──────────────────────────────────────────────────
+    -- -- Event log --------------------------------------------------
     local function log(msg, col)
         table.insert(eventLog, 1, {
             message = msg, color = col or colors.white,
@@ -105,7 +105,7 @@ function GateDial.main(win)
         if CONFIG.DEBUG_MODE then print("[GateDial] " .. msg) end
     end
 
-    -- ── Peripheral detection ───────────────────────────────────────
+    -- -- Peripheral detection ---------------------------------------
     local function findInterface()
         for _, t in ipairs({"advanced_crystal_interface","crystal_interface","basic_interface"}) do
             local p = peripheral.find(t)
@@ -142,7 +142,7 @@ function GateDial.main(win)
         log("Iris: " .. (gState.hasIris and "detected" or "none"), colors.lightGray)
     end
 
-    -- ── API / WS ───────────────────────────────────────────────────
+    -- -- API / WS ---------------------------------------------------
     local function buildStatusPayload()
         local ownAddr  = table.concat(CONFIG.STARGATE_ADDRESS, ",")
         local dialAddr = ""
@@ -232,7 +232,7 @@ function GateDial.main(win)
         log("Loaded destinations", colors.green)
     end
 
-    -- ── Gate status polling ────────────────────────────────────────
+    -- -- Gate status polling ----------------------------------------
     local function updateGateStatus()
         if not interface then return end
         local fresh = peripheral.find(interfaceType)
@@ -283,7 +283,7 @@ function GateDial.main(win)
         end
     end
 
-    -- ── Gate control ───────────────────────────────────────────────
+    -- -- Gate control -----------------------------------------------
     local function openIris()
         if not gState.hasIris then log("No iris", colors.red); return end
         if gState.irisProgress == 0 then log("Already open", colors.yellow); return end
@@ -318,7 +318,7 @@ function GateDial.main(win)
         end
     end
 
-    -- ── Dialing ────────────────────────────────────────────────────
+    -- -- Dialing ----------------------------------------------------
     local function dialCrystal(address)
         gState.dialing = true
         gState.currentDialingAddress = address
@@ -432,7 +432,7 @@ function GateDial.main(win)
         end
     end
 
-    -- ── WS command handler ─────────────────────────────────────────
+    -- -- WS command handler -----------------------------------------
     local function handleCommand(data)
         if not data or not data.action or data.action == "null" then return end
         if data.from ~= CONFIG.STARGATE_NAME then return end
@@ -447,7 +447,7 @@ function GateDial.main(win)
         end
     end
 
-    -- ── WS connection ──────────────────────────────────────────────
+    -- -- WS connection ----------------------------------------------
     local function connectWS()
         wsDisconnect()  -- always cleanly close any existing connection first
         local ws, err = http.websocket(CONFIG.WS_URL .. CONFIG.STARGATE_NAME)
@@ -460,7 +460,7 @@ function GateDial.main(win)
         end
     end
 
-    -- ── Rendering ──────────────────────────────────────────────────
+    -- -- Rendering --------------------------------------------------
     local btns = {}
 
     local function renderMain()
@@ -568,7 +568,7 @@ function GateDial.main(win)
         else renderDestinations() end
     end
 
-    -- ── Touch handling ─────────────────────────────────────────────
+    -- -- Touch handling ---------------------------------------------
     local function handleTouch(x, y)
         for _, btn in ipairs(btns) do
             if y == btn.y and x >= btn.x1 and x <= btn.x2 then
@@ -592,7 +592,7 @@ function GateDial.main(win)
         end
     end
 
-    -- ── Boot ───────────────────────────────────────────────────────
+    -- -- Boot -------------------------------------------------------
     if not refreshPeripherals() then
         win.setBackgroundColor(colors.red); win.clear()
         wWrite(2, 2, "No Stargate interface found!", colors.white,  colors.red)
@@ -642,7 +642,7 @@ function GateDial.main(win)
     pollTimer = os.startTimer(CONFIG.POLL_INTERVAL)
     render()
 
-    -- ── Event loop ─────────────────────────────────────────────────
+    -- -- Event loop -------------------------------------------------
     while true do
         local ev, p1, p2, p3 = os.pullEvent()
 

@@ -11,19 +11,19 @@ local API_BASE = "http://" .. SERVER .. "/todo/api"
 -- Set to nil to run without a monitor
 local MONITOR_SIDE = "top"
 
--- ─── Status config ───────────────────────────────────────────
+-- --- Status config -------------------------------------------
 local STATUS_LABELS = { todo = "To Do", inprogress = "In Progress", done = "Done" }
 local STATUS_COLORS = { todo = colors.yellow, inprogress = colors.orange, done = colors.lime }
 local STATUS_ORDER  = { "todo", "inprogress", "done" }
 
--- ─── State ───────────────────────────────────────────────────
+-- --- State ---------------------------------------------------
 local todos      = {}
 local selected   = 1
 local screen     = "list"   -- "list" | "view"
 local status_msg = ""
 local mon        = nil
 
--- ─── Monitor Setup ───────────────────────────────────────────
+-- --- Monitor Setup -------------------------------------------
 local function setupMonitor()
     if not MONITOR_SIDE then return end
     if peripheral.isPresent(MONITOR_SIDE)
@@ -33,7 +33,7 @@ local function setupMonitor()
     end
 end
 
--- ─── HTTP Helpers ────────────────────────────────────────────
+-- --- HTTP Helpers --------------------------------------------
 local function httpGet(url)
     local ok, resp = pcall(http.get, url)
     if not ok or not resp then return nil end
@@ -55,7 +55,7 @@ local function httpPost(endpoint, payload)
     return textutils.unserialiseJSON(body)
 end
 
--- ─── API Calls ───────────────────────────────────────────────
+-- --- API Calls -----------------------------------------------
 local function fetchTodos()
     local data = httpGet(API_BASE)
     if data and data.todos then
@@ -75,7 +75,7 @@ local function apiDelete(id)
     return httpPost("/delete", { id = id })
 end
 
--- ─── Terminal Drawing ────────────────────────────────────────
+-- --- Terminal Drawing ----------------------------------------
 local tw, th = term.getSize()
 
 local function termDrawText(x, y, text, fg, bg)
@@ -202,7 +202,7 @@ local function draw()
     end
 end
 
--- ─── Monitor Drawing ─────────────────────────────────────────
+-- --- Monitor Drawing -----------------------------------------
 local function monDrawText(x, y, text, fg, bg)
     mon.setCursorPos(x, y)
     if fg then mon.setTextColor(fg) end
@@ -269,7 +269,7 @@ local function drawMonitor()
     mon.setTextColor(colors.white)
 end
 
--- ─── Actions ─────────────────────────────────────────────────
+-- --- Actions -------------------------------------------------
 local function doAdd()
     term.setBackgroundColor(colors.black)
     term.clear()
@@ -370,7 +370,7 @@ local function doDelete()
     drawMonitor()
 end
 
--- ─── Keyboard Handler ────────────────────────────────────────
+-- --- Keyboard Handler ----------------------------------------
 -- Returns false to signal quit
 local function handleKey(key)
     local n = #todos
@@ -423,7 +423,7 @@ local function handleKey(key)
     return true
 end
 
--- ─── Monitor Click Handler ────────────────────────────────────
+-- --- Monitor Click Handler ------------------------------------
 local function handleMonitorClick(x, y)
     if not mon or not todos[selected] then return end
     local _, mh = mon.getSize()
@@ -447,7 +447,7 @@ local function handleMonitorClick(x, y)
     end
 end
 
--- ─── Main ─────────────────────────────────────────────────────
+-- --- Main -----------------------------------------------------
 setupMonitor()
 
 status_msg = "Loading..."

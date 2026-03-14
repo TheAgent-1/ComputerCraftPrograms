@@ -8,16 +8,16 @@
 
 local Todo = {}
 
--- ─── Config ──────────────────────────────────────────────────────────────────
+-- --- Config ------------------------------------------------------------------
 local SERVER   = "192.168.1.41:5005"
 local API_BASE = "http://" .. SERVER .. "/todo/api"
 
--- ─── Status metadata ─────────────────────────────────────────────────────────
+-- --- Status metadata ---------------------------------------------------------
 local STATUS_LABELS = { todo = "To Do", inprogress = "In Progress", done = "Done" }
 local STATUS_COLORS = { todo = colors.yellow, inprogress = colors.orange, done = colors.lime }
 local STATUS_ORDER  = { "todo", "inprogress", "done" }
 
--- ─── HTTP helpers ────────────────────────────────────────────────────────────
+-- --- HTTP helpers ------------------------------------------------------------
 local function httpGet(url)
     local ok, resp = pcall(http.get, url)
     if not ok or not resp then return nil end
@@ -37,18 +37,18 @@ local function httpPost(endpoint, payload)
     return textutils.unserialiseJSON(body)
 end
 
--- ─── main(win) ───────────────────────────────────────────────────────────────
+-- --- main(win) ---------------------------------------------------------------
 function Todo.main(win)
     local w, h = win.getSize()
 
-    -- ── State ──────────────────────────────────────────────────
+    -- -- State --------------------------------------------------
     local todos    = {}
     local scroll   = 0     -- first visible item index (0-based)
     local selected = 1     -- 1-based index into todos
     local screen   = "list"  -- "list" | "view"
     local status   = ""    -- status message shown at bottom of list
 
-    -- ── Drawing helpers ────────────────────────────────────────
+    -- -- Drawing helpers ----------------------------------------
     local function fill(y, bg)
         win.setCursorPos(1, y)
         win.setBackgroundColor(bg)
@@ -69,7 +69,7 @@ function Todo.main(win)
         return x + #btn + 1
     end
 
-    -- ── API calls ──────────────────────────────────────────────
+    -- -- API calls ----------------------------------------------
     local function fetchTodos()
         status = "Loading\x85"
         win.setCursorPos(2, h)
@@ -96,7 +96,7 @@ function Todo.main(win)
         return httpPost("/delete", { id = id })
     end
 
-    -- ── List screen ────────────────────────────────────────────
+    -- -- List screen --------------------------------------------
     -- Touch targets recorded per draw for hit-testing
     local listItemRows = {}  -- [row_y] = todos index
 
@@ -105,7 +105,7 @@ function Todo.main(win)
         win.clear()
         listItemRows = {}
 
-        -- ── Toolbar (row 1) ──
+        -- -- Toolbar (row 1) --
         local done_c = 0
         for _, t in ipairs(todos) do
             if t.status == "done" then done_c = done_c + 1 end
@@ -118,7 +118,7 @@ function Todo.main(win)
         local counter = "[" .. done_c .. "/" .. #todos .. "]"
         wWrite(w - #counter, 1, counter, colors.lightGray, colors.gray)
 
-        -- ── Items ──
+        -- -- Items --
         local ITEM_H   = 2      -- rows per item (title + status)
         local listTop  = 2
         local listBot  = h - 1  -- last usable row (h = status bar)
@@ -162,7 +162,7 @@ function Todo.main(win)
             listItemRows[row_y + 1] = idx
         end
 
-        -- ── Scroll indicators ──
+        -- -- Scroll indicators --
         if scroll > 0 then
             wWrite(w - 1, listTop, "\x1e", colors.white, colors.black)
         end
@@ -170,12 +170,12 @@ function Todo.main(win)
             wWrite(w - 1, listBot, "\x1f", colors.white, colors.black)
         end
 
-        -- ── Status bar ──
+        -- -- Status bar --
         fill(h, colors.gray)
         wWrite(2, h, status ~= "" and status or "Touch a task to open", colors.lightGray, colors.gray)
     end
 
-    -- ── View screen ────────────────────────────────────────────
+    -- -- View screen --------------------------------------------
     -- Button touch zones recorded per draw
     local viewBtns = {}  -- list of { x1,x2, y, action }
 
@@ -191,7 +191,7 @@ function Todo.main(win)
         win.setBackgroundColor(colors.black)
         win.clear()
 
-        -- ── Toolbar ──
+        -- -- Toolbar --
         fill(1, colors.gray)
         local bx = 2
         recordBtn(bx, 1, "\xab Back", "back")
@@ -200,7 +200,7 @@ function Todo.main(win)
         bx = drawBtn(bx, 1, "Del",        colors.red,    colors.gray)
         wWrite(w - 12, 1, selected .. "/" .. #todos, colors.lightGray, colors.gray)
 
-        -- ── Content ──
+        -- -- Content --
         wWrite(2, 3,  "Title",        colors.lightGray, colors.black)
         wWrite(2, 4,  (t.title or "Untitled"):sub(1, w - 3), colors.white, colors.black)
 
@@ -216,7 +216,7 @@ function Todo.main(win)
         local sl = STATUS_LABELS[t.status] or t.status
         wWrite(2, 11, sl,             sc,               colors.black)
 
-        -- ── Status buttons ──
+        -- -- Status buttons --
         wWrite(2, 13, "Set status:",  colors.lightGray, colors.black)
         local sbx = 2
         for _, s in ipairs(STATUS_ORDER) do
@@ -228,25 +228,25 @@ function Todo.main(win)
             sbx = drawBtn(sbx, 14, lbl, fg, bg)
         end
 
-        -- ── Edit button ──
+        -- -- Edit button --
         wWrite(2, 16, "Edit:",        colors.lightGray, colors.black)
         recordBtn(2, 17, "Edit Title", "edit:title")
         local ex = drawBtn(2, 17, "Edit Title", colors.white, colors.gray)
         recordBtn(ex, 17, "Edit Desc",  "edit:desc")
         drawBtn(ex, 17,  "Edit Desc",  colors.white, colors.gray)
 
-        -- ── Status bar ──
+        -- -- Status bar --
         fill(h, colors.gray)
         wWrite(2, h, status ~= "" and status or " ", colors.lightGray, colors.gray)
     end
 
-    -- ── Redraw dispatcher ──────────────────────────────────────
+    -- -- Redraw dispatcher --------------------------------------
     local function draw()
         if screen == "list" then drawList()
         else                     drawView() end
     end
 
-    -- ── Text input via terminal ────────────────────────────────
+    -- -- Text input via terminal --------------------------------
     -- Since monitors have no keyboard, we fall back to the computer terminal.
     local function termInput(prompt)
         -- Tell the user on the monitor
@@ -267,7 +267,7 @@ function Todo.main(win)
         return input
     end
 
-    -- ── Actions ────────────────────────────────────────────────
+    -- -- Actions ------------------------------------------------
     local function doAdd()
         local title = termInput("New task title")
         if title and #title > 0 then
@@ -317,7 +317,7 @@ function Todo.main(win)
         draw()
     end
 
-    -- ── Touch handlers ─────────────────────────────────────────
+    -- -- Touch handlers -----------------------------------------
     local ADD_BTN   = { x1 = 2, x2 = 9 }   -- "[ + Add ]" width = 9
     local REF_BTN   = { x1 = 11, x2 = 19 } -- "[ \x1d Ref ]"
 
@@ -366,13 +366,13 @@ function Todo.main(win)
         end
     end
 
-    -- ── Boot ───────────────────────────────────────────────────
+    -- -- Boot ---------------------------------------------------
     fetchTodos()
     selected = math.max(1, math.min(1, #todos))
     status   = ""
     draw()
 
-    -- ── Event loop ─────────────────────────────────────────────
+    -- -- Event loop ---------------------------------------------
     while true do
         local ev, p1, p2, p3 = os.pullEvent()
 

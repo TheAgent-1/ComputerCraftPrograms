@@ -9,13 +9,13 @@ local OS_NAME    = "BaseOS"
 local OS_COMPANY = "Spectre Inc."
 local VERSION    = "1.0"
 
--- ─── Layout constants ────────────────────────────────────────────────────────
+-- --- Layout constants --------------------------------------------------------
 local HEADER_H  = 2   -- rows the OS header occupies (row 1 = title, row 2 = accent)
 local TILE_COLS = 4   -- columns in the program grid
 local TILE_H    = 6   -- height of each program tile (rows)
 local TILE_GAP  = 1   -- 1-col right gap between tiles (visual separator)
 
--- ─── Monitor setup ───────────────────────────────────────────────────────────
+-- --- Monitor setup -----------------------------------------------------------
 local mon = peripheral.find("monitor")
 if not mon then
     error("[BaseOS] No monitor attached. Attach a monitor and restart.")
@@ -24,19 +24,19 @@ mon.setTextScale(0.5)
 mon.clear()
 local mw, mh = mon.getSize()
 
--- ─── Content window ──────────────────────────────────────────────────────────
+-- --- Content window ----------------------------------------------------------
 -- Programs only see this window; they use it exactly like `mon`.
 local contentWin = window.create(mon, 1, HEADER_H + 1, mw, mh - HEADER_H, true)
 local cw, ch     = contentWin.getSize()
 
--- ─── Registry ────────────────────────────────────────────────────────────────
+-- --- Registry ----------------------------------------------------------------
 local registry = dofile("registry.lua")
 
--- ─── OS state ────────────────────────────────────────────────────────────────
+-- --- OS state ----------------------------------------------------------------
 local activeEntry = nil   -- registry entry currently running (nil = home screen)
 local activeCoro  = nil   -- coroutine wrapping the active program
 
--- ─── Drawing helpers ─────────────────────────────────────────────────────────
+-- --- Drawing helpers ---------------------------------------------------------
 local function monFill(y, bg)
     mon.setCursorPos(1, y)
     mon.setBackgroundColor(bg)
@@ -50,7 +50,7 @@ local function monWrite(x, y, text, fg, bg)
     mon.write(text)
 end
 
--- ─── Header ──────────────────────────────────────────────────────────────────
+-- --- Header ------------------------------------------------------------------
 -- Touch zone for the Home button (row 1, columns 2-8 → " Home ")
 local HOME_X1, HOME_X2 = 2, 8
 
@@ -76,7 +76,7 @@ local function drawHeader()
     mon.setTextColor(colors.white)
 end
 
--- ─── Home grid ───────────────────────────────────────────────────────────────
+-- --- Home grid ---------------------------------------------------------------
 local tileW = math.floor(cw / TILE_COLS)
 
 -- Returns the top-left (x, y) and dimensions (w, h) of tile at index idx
@@ -152,7 +152,7 @@ local function tileAt(cx, cy)
     return nil
 end
 
--- ─── Program lifecycle ───────────────────────────────────────────────────────
+-- --- Program lifecycle -------------------------------------------------------
 local function goHome()
     activeEntry = nil
     activeCoro  = nil
@@ -215,7 +215,7 @@ local function launchProgram(entry)
     end
 end
 
--- ─── Event forwarding ────────────────────────────────────────────────────────
+-- --- Event forwarding --------------------------------------------------------
 -- Resumes the active coroutine with an event.
 -- If the coroutine crashes or returns, falls back to home.
 local function forwardEvent(...)
@@ -234,7 +234,7 @@ local function forwardEvent(...)
     end
 end
 
--- ─── Header touch ────────────────────────────────────────────────────────────
+-- --- Header touch ------------------------------------------------------------
 -- Called when the user touches anywhere in the header rows (y <= HEADER_H).
 local function handleHeaderTouch(x, y)
     if y == 1 and x >= HOME_X1 and x <= HOME_X2 + 2 then
@@ -242,11 +242,11 @@ local function handleHeaderTouch(x, y)
     end
 end
 
--- ─── Boot ────────────────────────────────────────────────────────────────────
+-- --- Boot --------------------------------------------------------------------
 drawHeader()
 drawHomeGrid()
 
--- ─── Main event loop ─────────────────────────────────────────────────────────
+-- --- Main event loop ---------------------------------------------------------
 while true do
     local ev, p1, p2, p3 = os.pullEvent()
 
