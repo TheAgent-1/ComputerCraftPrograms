@@ -101,7 +101,7 @@ function InfoBoard.main(win)
     -- DISPLAY BOARD - text only, no colour calls whatsoever
     -- ===========================================================
 
-    local dw, dh = 51, 19
+    local dw, dh = 22, 8
 
     local function setupDisplay()
         if not display then return false end
