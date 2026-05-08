@@ -33,13 +33,13 @@ local tictactoeclient_url = root_url .. "TicTacToe/TicTacToe_client.lua"
 local externalmailclient_url = root_url .. "ExternalMail/mail_x_world.lua"
 
 --Stargate--
-local stargate_url = root_url .. "Stargate/GateDial.lua"
-local stargate_auto_url = root_url .. "Stargate/GateDialAuto.lua"
-local stargate_manual_url = root_url .. "Stargate/GateDialManual.lua"
-local stargate_full_url = root_url .. "Stargate/GateDialFull.lua"
-local stargate_remotedhd_url = root_url .. "Stargate/RemoteDHD.lua"
-local stargate_register_url = root_url .. "Stargate/GateRegister.lua"
-local stargate_fullWS_url = root_url .. "Stargate/GateDialFull-WS.lua"
+local stargate_url = root_url .. "Stargate/Working/GateDial.lua"
+local stargate_auto_url = root_url .. "Stargate/Working/GateDialAuto.lua"
+local stargate_manual_url = root_url .. "Stargate/Working/GateDialManual.lua"
+local stargate_full_url = root_url .. "Stargate/Working/GateDialFull.lua"
+local stargate_remotedhd_url = root_url .. "Stargate/Working/RemoteDHD.lua"
+local stargate_register_url = root_url .. "Stargate/Working/GateRegister.lua"
+local stargate_fullWS_url = root_url .. "Stargate/Working/GateDialFull-WS.lua"
 local stargate_readme_url = root_url .. "Stargate/ReadMe.txt"
 
 --Powerstation--
@@ -54,6 +54,9 @@ local todo_url = root_url .. "ToDo/ToDo.lua"
 --BaseOS--
 -- BaseOS is a set of multiple files so it needs a secondary installer to download all the necessary files
 local baseos_url = root_url .. "BaseOS/BaseOS_Installer.lua"
+
+--AE2--
+local ae2_spatial_base_url = root_url .. "AE2SpatialBase/Spatial.lua"
 
 
 --=====================================
@@ -267,6 +270,13 @@ local function BaseOSInstall() --Handles installing BaseOS
     downloadFile(baseos_url, "BaseOS_Installer.lua")
 end
 
+local function AE2SpatialBaseInstall() --Handles installing AE2 Spatial Base
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Installing AE2 Spatial Base...")
+    downloadFile(ae2_spatial_base_url, "Spatial.lia")
+end
+
 --=====================================
 -- Main Loop
 --=====================================
@@ -286,6 +296,7 @@ local function main() --Handles main screen
     print("6 - Install Powerstation")
     print("7 - Install ToDo")
     print("8 - Install BaseOS")
+    print("9 - Install AE2 Spatial Base")
     write("Select an option: ")
     local choice = getInput()
     if choice == "0" then
@@ -310,6 +321,8 @@ local function main() --Handles main screen
         ToDoInstall()
     elseif choice == "8" then
         BaseOSInstall()
+    elseif choice == "9" then
+        AE2SpatialBaseInstall()
     else
         print("Invalid option. Exiting.")
     end
