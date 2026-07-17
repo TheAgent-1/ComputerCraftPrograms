@@ -10,59 +10,116 @@
 -- The full URL for the updater: http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/updater.lua
 
 --=====================================
--- URL Definitions
+-- Configuration
 --=====================================
---Root URL for the repositories--
-local root_url = "http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/"
+local SOURCES = {
+  gitea = {
+    name = "Gitea (Local)",
+    root_url = "http://croul1.duckdns.org:3000/Jacob/ComputerCraftPrograms/raw/branch/main/"
+  },
+  github = {
+    name = "GitHub",
+    root_url = "https://raw.githubusercontent.com/TheAgent-1/ComputerCraftPrograms/main/"
+  }
+}
 
---Self Update--
-local updater_url = root_url .. "updater.lua"
+local root_url = nil
+local updater_url = nil
 
---Mail System--
-local mailserver_url = root_url .. "Mail/mail_server.lua"
-local mailclient_url = root_url .. "Mail/mail_client.lua"
-
---Music Player--
-local musicplayer_url = root_url .. "MusicPlayer/MusicPlayer.lua"
-
---TicTacToe--
-local tictactoeserver_url = root_url .. "TicTacToe/TicTacToe_server.lua"
-local tictactoeclient_url = root_url .. "TicTacToe/TicTacToe_client.lua"
-
---External Mail System--
-local externalmailclient_url = root_url .. "ExternalMail/mail_x_world.lua"
-
---Stargate--
-local stargate_url = root_url .. "Stargate/Working/GateDial.lua"
-local stargate_auto_url = root_url .. "Stargate/Working/GateDialAuto.lua"
-local stargate_manual_url = root_url .. "Stargate/Working/GateDialManual.lua"
-local stargate_full_url = root_url .. "Stargate/Working/GateDialFull.lua"
-local stargate_remotedhd_url = root_url .. "Stargate/Working/RemoteDHD.lua"
-local stargate_register_url = root_url .. "Stargate/Working/GateRegister.lua"
-local stargate_fullWS_url = root_url .. "Stargate/Working/GateDialFull-WS.lua"
-local stargate_readme_url = root_url .. "Stargate/ReadMe.txt"
-
---Powerstation--
-local powerstationserver_url = root_url .. "Powerstation/Powerstation_Server.lua"
-local powerstationclient_url = root_url .. "Powerstation/Powerstation_Client.lua"
-local ps_server_url = root_url .. "Powerstation/PS_Server_test.lua"
-local ps_client_url = root_url .. "Powerstation/PS_Client_test.lua"
-
---ToDo--
-local todo_url = root_url .. "ToDo/ToDo.lua"
-
---BaseOS--
--- BaseOS is a set of multiple files so it needs a secondary installer to download all the necessary files
-local baseos_url = root_url .. "BaseOS/BaseOS_Installer.lua"
-
---AE2--
-local ae2_spatial_base_url = root_url .. "AE2SpatialBase/Spatial.lua"
+--=====================================
+-- Program Definitions
+--=====================================
+local programOrder = {"stargate", "powerstation", "todo", "ae2"}
+local programs = {
+  mail = {
+    name = "Mail System",
+    itemOrder = {"server", "client"},
+    items = {
+        server = {url = root_url .. "Mail/mail_server.lua", filename = "MailServer.lua"},
+        client = {url = root_url .. "Mail/mail_client.lua", filename = "MailClient.lua"},
+    }
+  },
+  music = {
+    name = "Music Player (Broken)",
+    itemOrder = {"player"},
+    items = {
+        player = {url = root_url .. "MusicPlayer/MusicPlayer.lua", filename = "MusicPlayer.lua"},
+    }
+  },
+  tictactoe = {
+    name = "TicTacToe (Broken)",
+    itemOrder = {"server", "client"},
+    items = {
+        server = {url = root_url .. "TicTacToe/TicTacToe_server.lua", filename = "TicTacToeServer.lua"},
+        client = {url = root_url .. "TicTacToe/TicTacToe_client.lua", filename = "TicTacToeClient.lua"},
+    }
+  },
+  externalmail = {
+    name = "External Mail System",
+    itemOrder = {"client"},
+    items = {
+        client = {url = root_url .. "ExternalMail/mail_x_world.lua", filename = "MailXWorld.lua"},
+    }
+  },
+  stargate = {
+    name = "Stargate",
+    itemOrder = {"dial", "auto", "manual", "full", "fullWS", "remoteDHD", "register"},
+    items = {
+        dial = {url = root_url .. "Stargate/Working/GateDial-Legacy-Hybrid.lua", filename = "GateDial-Legacy-Hybrid.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+        auto = {url = root_url .. "Stargate/Working/GateDial-Legacy-AutoAPI.lua", filename = "GateDial-Legacy-AutoAPI.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+        manual = {url = root_url .. "Stargate/Working/GateDial-Terminal-Manual.lua", filename = "GateDial-Terminal-Manual.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+        full = {url = root_url .. "Stargate/Working/GateDial-GUI-HTTP.lua", filename = "GateDial-GUI-HTTP.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+        fullWS = {url = root_url .. "Stargate/Working/GateDial-GUI-WS.lua", filename = "GateDial-GUI-WS.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+        remoteDHD = {url = root_url .. "Stargate/Working/RemoteDHD.lua", filename = "RemoteDHD.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+        register = {url = root_url .. "Stargate/Working/GateNetwork-Registry.lua", filename = "GateNetwork-Registry.lua", readmeUrl = root_url .. "Stargate/ReadMe.txt", readmeFilename = "Stargate_Readme.txt"},
+    }
+  },
+  powerstation = {
+    name = "Powerstation",
+    itemOrder = {"server", "client", "serverTest", "clientTest"},
+    items = {
+        server = {url = root_url .. "Powerstation/Powerstation_Server.lua", filename = "Powerstation_Server.lua"},
+        client = {url = root_url .. "Powerstation/Powerstation_Client.lua", filename = "Powerstation_Client.lua"},
+        serverTest = {url = root_url .. "Powerstation/PS_Server_test.lua", filename = "PS_Server_test.lua"},
+        clientTest = {url = root_url .. "Powerstation/PS_Client_test.lua", filename = "PS_Client_test.lua"},
+    }
+  },
+  todo = {
+    name = "ToDo",
+    itemOrder = {"app"},
+    items = {
+        app = {url = root_url .. "ToDo/ToDo.lua", filename = "ToDo.lua"},
+    }
+  },
+  baseos = {
+    name = "BaseOS",
+    itemOrder = {"installer"},
+    items = {
+        installer = {url = root_url .. "BaseOS/BaseOS_Installer.lua", filename = "BaseOS_Installer.lua"},
+    }
+  },
+  ae2 = {
+    name = "AE2 Spatial Base",
+    itemOrder = {"spatial"},
+    items = {
+        spatial = {url = root_url .. "AE2SpatialBase/Spatial.lua", filename = "Spatial.lua"},
+    }
+  },
+  test = {
+    name = "Test Programs",
+    itemOrder = {"test1", "test2"},
+    items = {
+        test1 = {url = root_url .. "Test/test1.lua", filename = "test1.lua"},
+        test2 = {url = root_url .. "Test/test2.lua", filename = "test2.lua"},
+    }
+  }
+}
 
 
 --=====================================
 -- Utility Functions
 --=====================================
-local function downloadFile(url, filename) --Handles downloading the selected file
+local function downloadFile(url, filename)
     local ok, response = pcall(http.get, url)
     if not ok or not response then
         print("Failed to download " .. filename)
@@ -107,7 +164,27 @@ local function getInput()
     return s:upper()
 end
 
-local function SelfUpdate()
+local function pause()
+    print("Press Enter to continue...")
+    read()
+end
+
+local readmeCache = {}
+local function downloadReadme(readmeUrl, readmeFilename)
+    if not readmeUrl or not readmeFilename then
+        return
+    end
+    if readmeCache[readmeFilename] then
+        print("Run 'edit " .. readmeFilename .. "' to view the Readme")
+        return
+    end
+    if downloadFile(readmeUrl, readmeFilename) then
+        print("Run 'edit " .. readmeFilename .. "' to view the Readme")
+        readmeCache[readmeFilename] = true
+    end
+end
+
+local function selfUpdate()
     term.clear()
     term.setCursorPos(1, 1)
     print("Running Self Update...")
@@ -119,215 +196,131 @@ local function SelfUpdate()
 end
 
 --=====================================
+-- Source Selection
+--=====================================
+local function selectSource()
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Updater - Select Source")
+    print(string.rep("=", 30))
+    print("1 - " .. SOURCES.gitea.name)
+    print("2 - " .. SOURCES.github.name)
+    write("Select an option: ")
+    local choice = getInput()
+
+    if choice == "2" then
+        root_url = SOURCES.github.root_url
+        print("Using " .. SOURCES.github.name .. ".")
+    else
+        root_url = SOURCES.gitea.root_url
+        print("Using " .. SOURCES.gitea.name .. ".")
+    end
+
+    updater_url = root_url .. "updater.lua"
+    sleep(1)
+end
+
+--=====================================
 -- Installation Functions
 --=====================================
-local function MailInstall() --Handles installing the mail system
+local function installItem(categoryKey, itemKey)
+    local category = programs[categoryKey]
+    local item = category.items[itemKey]
+    
+    if not item then
+        print("Invalid selection.")
+        return
+    end
+    
+    downloadFile(item.url, item.filename)
+    
+    if item.readmeUrl then
+        downloadReadme(item.readmeUrl, item.readmeFilename)
+    end
+end
+
+local function showCategoryItems(categoryKey)
     term.clear()
     term.setCursorPos(1, 1)
-    print("Please select the installation type:")
-    print("1 - Server")
-    print("2 - Client")
+    local category = programs[categoryKey]
+    print(category.name)
+    print(string.rep("-", 30))
+    
+    local items = {}
+    local index = 1
+    local itemsToDisplay = category.itemOrder or {}
+    
+    if #itemsToDisplay == 0 then
+        for key, _ in pairs(category.items) do
+            table.insert(itemsToDisplay, key)
+        end
+    end
+    
+    for _, key in ipairs(itemsToDisplay) do
+        local item = category.items[key]
+        if item then
+            items[tostring(index)] = key
+            print(index .. " - " .. item.filename)
+            index = index + 1
+        end
+    end
+    
     write("Select an option: ")
-
     local choice = getInput()
-    if choice == "1" then
-        downloadFile(mailserver_url, "MailServer.lua")
-    elseif choice == "2" then
-        downloadFile(mailclient_url, "MailClient.lua")
+    
+    if items[choice] then
+        installItem(categoryKey, items[choice])
     else
-        print("Invalid option. Exiting.")
+        print("Invalid option.")
     end
-end
 
-local function MusicInstall() --Handles installing the music player
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Music Player is currently broken.")
-    print("Would you like to download it anyway? (Y/N)")
-    local choice = getInput()
-    if choice == "Y" then
-        downloadFile(musicplayer_url, "MusicPlayer.lua")
-    elseif choice == "N" then
-        print("Installation cancelled.")
-    else
-        print("Invalid option. Exiting.")
-    end
-end
-
-local function TicTacToeInstall() --Handles installing the TicTacToe game
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Please select the installation type:")
-    print("1 - Server")
-    print("2 - Client")
-    write("Select an option: ")
-
-    local choice = getInput()
-    if choice == "1" then
-        downloadFile(tictactoeserver_url, "TicTacToeServer.lua")
-    elseif choice == "2" then
-        downloadFile(tictactoeclient_url, "TicTacToeClient.lua")
-    else
-        print("Invalid option. Exiting.")
-    end
-end
-
-local function ExternalMailInstall() --Handles installing the external mail system
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Please select the installation type:")
-    print("1 - Client")
-    write("Select an option: ")
-
-    local choice = getInput()
-    if choice == "1" then
-        downloadFile(externalmailclient_url, "MailXWorld.lua")
-    else
-        print("Invalid option. Exiting.")
-    end
-end
-
-local function StargateInstall() --Handles installing the Stargate program
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Please select the Stargate program to install:")
-    print("1 - GateDial")
-    print("2 - GateDialAuto")
-    print("3 - GateDialManual")
-    print("4 - GateDialFull (Recommended)")
-    print("5 - GateDialFull-WS (WebSocket version)")
-    print("6 - RemoteDHD (Only for Portable Devices)")
-    print("7 - GateRegister")
-    write("Select an option: ")
-
-    local choice = getInput()
-    if choice == "1" then
-        downloadFile(stargate_url, "GateDial.lua")
-        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
-        print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "2" then
-        downloadFile(stargate_auto_url, "GateDialAuto.lua")
-        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
-        print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "3" then
-        downloadFile(stargate_manual_url, "GateDialManual.lua")
-        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
-        print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "4" then
-        downloadFile(stargate_full_url, "GateDialFull.lua")
-        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
-        print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "5" then
-        downloadFile(stargate_fullWS_url, "GateDialFull-WS.lua")
-        downloadFile(stargate_readme_url, "Stargate_Readme.txt")
-        print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "6" then
-        downloadFile(stargate_remotedhd_url, "RemoteDHD.lua")
-        --downloadFile(stargate_readme_url, "Stargate_Readme.txt")
-        --print("Run 'edit Stargate_Readme.txt' to view the Readme")
-    elseif choice == "7" then
-        downloadFile(stargate_register_url, "GateRegister.lua")
-    else
-        print("Invalid option. Exiting.")
-    end
-end
-
-local function PowerstationInstall() --Handles installing the Powerstation program
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Please select the Powerstation program to install:")
-    print("1 - Powerstation Server")
-    print("2 - Powerstation Client")
-    print("3 - Powerstation Server - Test Branch")
-    print("4 - Powerstation Client - Test Branch")
-    write("Select an option: ")
-
-    local choice = getInput()
-    if choice == "1" then
-        downloadFile(powerstationserver_url, "Powerstation_Server.lua")
-    elseif choice == "2" then
-        downloadFile(powerstationclient_url, "Powerstation_Client.lua")
-    elseif choice == "3" then
-        downloadFile(ps_server_url, "PS_Server_test.lua")
-    elseif choice == "4" then
-        downloadFile(ps_client_url, "PS_Client_test.lua")
-    else
-        print("Invalid option. Exiting.")
-    end
-end
-
-local function ToDoInstall() --Handles installing the ToDo program
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing ToDo...")
-    downloadFile(root_url .. "ToDo/ToDo.lua", "ToDo.lua")
-end
-
-local function BaseOSInstall() --Handles installing BaseOS
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing BaseOS...")
-    downloadFile(baseos_url, "BaseOS_Installer.lua")
-end
-
-local function AE2SpatialBaseInstall() --Handles installing AE2 Spatial Base
-    term.clear()
-    term.setCursorPos(1, 1)
-    print("Installing AE2 Spatial Base...")
-    downloadFile(ae2_spatial_base_url, "Spatial.lia")
+    pause()
 end
 
 --=====================================
--- Main Loop
+-- Main Menu
 --=====================================
-local function main() --Handles main screen
+local function main()
     term.clear()
     term.setCursorPos(1, 1)
-    print("Updater")
-    --DEBUG--
-    print("updater url: " .. updater_url)
-    print("Use -1 to run Self Update")
+    print("Updater - Program Installer")
+    print(string.rep("=", 30))
+    print("-1 - Self Update")
     print("0 - Exit")
-    print("1 - Install Mail System")
-    print("2 - Install Music Player (Broken)")
-    print("3 - Install TicTacToe (Broken)")
-    print("4 - Install External Mail System")
-    print("5 - Install Stargate")
-    print("6 - Install Powerstation")
-    print("7 - Install ToDo")
-    print("8 - Install BaseOS")
-    print("9 - Install AE2 Spatial Base")
+
+    local categories = {}
+    local index = 1
+    for _, key in ipairs(programOrder) do
+        local category = programs[key]
+        if category then
+            categories[tostring(index)] = key
+            print(index .. " - " .. category.name)
+            index = index + 1
+        end
+    end
+
     write("Select an option: ")
     local choice = getInput()
+
     if choice == "0" then
         term.clear()
         term.setCursorPos(1, 1)
         return false
     elseif choice == "-1" then
-        SelfUpdate()
-    elseif choice == "1" then
-        MailInstall()
-    elseif choice == "2" then
-        MusicInstall()
-    elseif choice == "3" then
-        TicTacToeInstall()
-    elseif choice == "4" then
-        ExternalMailInstall()
-    elseif choice == "5" then
-        StargateInstall()
-    elseif choice == "6" then
-        PowerstationInstall()
-    elseif choice == "7" then
-        ToDoInstall()
-    elseif choice == "8" then
-        BaseOSInstall()
-    elseif choice == "9" then
-        AE2SpatialBaseInstall()
+        selfUpdate()
+        pause()
+    elseif categories[choice] then
+        showCategoryItems(categories[choice])
     else
-        print("Invalid option. Exiting.")
+        print("Invalid option.")
     end
+
+    pause()
+
     return true
 end
+
+selectSource()
 
 local shouldContinue = true
 while shouldContinue do
